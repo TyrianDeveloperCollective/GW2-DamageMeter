@@ -7,3 +7,6 @@
 [submodule "src/GW2RE"]
 	path = src/GW2RE
 	url = https://github.com/TyrianDeveloperCollective/GW2RE-lib
+[submodule "src/thirdparty/Nexus"]
+	path = src/thirdparty/Nexus
+	url = https://github.com/RaidcoreGG/RCGG-lib-nexus-api
