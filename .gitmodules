@@ -1,0 +1,9 @@
+[submodule "Scripts"]
+	path = Scripts
+	url = https://github.com/RaidcoreGG/RCGG-Scripts
+[submodule "src/thirdparty/imgui"]
+	path = src/thirdparty/imgui
+	url = https://github.com/RaidcoreGG/imgui
+[submodule "src/GW2RE"]
+	path = src/GW2RE
+	url = https://github.com/TyrianDeveloperCollective/GW2RE-lib
