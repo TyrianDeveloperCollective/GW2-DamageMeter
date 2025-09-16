@@ -1,9 +1,6 @@
 #pragma once
 
-#include <windows.h>
-
 #include "Nexus/Nexus.h"
-#include "imgui/imgui.h"
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef();
 

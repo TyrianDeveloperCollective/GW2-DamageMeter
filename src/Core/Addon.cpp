@@ -1,8 +1,9 @@
-// dllmain.cpp : Defines the entry point for the DLL application.
-
 #include "Addon.h"
 
+#include "imgui/imgui.h"
+
 #include "Remote.h"
+#include "UI/UiRoot.h"
 #include "Version.h"
 
 #define ADDON_NAME "Damage Meter"
@@ -24,7 +25,6 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef()
 	s_AddonDef.Unload           = Addon::Unload;
 	s_AddonDef.Flags            = AF_None;
 
-	/* not necessary if hosted on Raidcore, but shown anyway for the example also useful as a backup resource */
 	s_AddonDef.Provider         = UP_GitHub;
 	s_AddonDef.UpdateLink       = REMOTE_URL;
 
@@ -39,14 +39,15 @@ namespace Addon
 	{
 		s_APIDefs = aApi;
 
-		ImGui::SetCurrentContext((ImGuiContext*)s_APIDefs->ImguiContext);
-		ImGui::SetAllocatorFunctions((void* (*)(size_t, void*))s_APIDefs->ImguiMalloc, (void(*)(void*, void*))s_APIDefs->ImguiFree);
+		UiRoot::Create(aApi);
 
 		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Loaded.");
 	}
 
 	void Unload()
 	{
+		UiRoot::Destroy();
+
 		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Unloaded.");
 	}
 }

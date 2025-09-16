@@ -179,6 +179,7 @@ CALL Scripts\version.bat</Command>
     <ClCompile Include="src\thirdparty\imgui\imgui_draw.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui_widgets.cpp" />
+    <ClCompile Include="src\UI\UiRoot.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Addon.h" />
@@ -187,6 +188,7 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\thirdparty\imgui\imstb_rectpack.h" />
     <ClInclude Include="src\thirdparty\imgui\imstb_textedit.h" />
     <ClInclude Include="src\thirdparty\imgui\imstb_truetype.h" />
+    <ClInclude Include="src\UI\UiRoot.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
