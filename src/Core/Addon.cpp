@@ -2,6 +2,7 @@
 
 #include "imgui/imgui.h"
 
+#include "Combat.h"
 #include "Remote.h"
 #include "UI/UiRoot.h"
 #include "Version.h"
@@ -34,20 +35,22 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef()
 namespace Addon
 {
 	static AddonAPI_t* s_APIDefs = nullptr;
+}
 
-	void Load(AddonAPI_t* aApi)
-	{
-		s_APIDefs = aApi;
+void Addon::Load(AddonAPI_t* aApi)
+{
+	s_APIDefs = aApi;
 
-		UiRoot::Create(aApi);
+	Combat::Create(aApi);
+	UiRoot::Create(aApi);
 
-		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Loaded.");
-	}
+	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Loaded.");
+}
 
-	void Unload()
-	{
-		UiRoot::Destroy();
+void Addon::Unload()
+{
+	Combat::Destroy();
+	UiRoot::Destroy();
 
-		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Unloaded.");
-	}
+	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Unloaded.");
 }
