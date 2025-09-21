@@ -1,9 +1,6 @@
 #pragma once
 
-#include <vector>
-
 #include "Core/Combat/CbtEncounter.h"
-#include "Core/Combat/CbtEvent.h"
 #include "Nexus/Nexus.h"
 
 #define EV_CCCCCCCC_COMBAT     "EV_CCCCCCCC_COMBAT"

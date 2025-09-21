@@ -5,6 +5,7 @@
 #include "imgui/imgui.h"
 
 #include "Core/Combat/Combat.h"
+#include "Core/Localization.h"
 #include "Core/TextCache/TextCache.h"
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
@@ -39,6 +40,8 @@ void UiRoot::Create(AddonAPI_t* aApi)
 	ImGui::SetCurrentContext((ImGuiContext*)s_APIDefs->ImguiContext);
 	ImGui::SetAllocatorFunctions((void* (*)(size_t, void*))s_APIDefs->ImguiMalloc, (void(*)(void*, void*))s_APIDefs->ImguiFree);
 
+	Localization::Init(s_APIDefs);
+
 	s_APIDefs->GUI_Register(RT_Render, UiRoot::Render);
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
 
@@ -60,15 +63,18 @@ void UiRoot::Render()
 	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
 	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
 
+	std::string wndName = Translate(ETexts::CombatMetrics);
+	wndName.append("###RCGG_Meter");
+
 	if (missionctx && missionctx->CurrentMap && missionctx->CurrentMap->PvP)
 	{
-		ImGui::Begin("Combat Metrics###RCGG_Meter");
-		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), "Disabled in PvP.");
+		ImGui::Begin(wndName.c_str());
+		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledInPvP));
 		ImGui::End();
 		return;
 	}
 
-	if (ImGui::Begin("Combat Metrics###RCGG_Meter"))
+	if (ImGui::Begin(wndName.c_str()))
 	{
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
 
@@ -78,11 +84,11 @@ void UiRoot::Render()
 
 		if (m > 0)
 		{
-			ImGui::Text("Duration: %llum%.2fs", m, s + ms);
+			ImGui::Text("%s: %llum%.2fs", Translate(ETexts::Duration), m, s + ms);
 		}
 		else
 		{
-			ImGui::Text("Duration: %.2fs", s + ms);
+			ImGui::Text("%s: %.2fs", Translate(ETexts::Duration), s + ms);
 		}
 
 		ImGui::TextDisabled("D/s: %.0f", abs(s_DisplayedEncounter.TotalDmg) / (cbtDurationMs / 1000.f));
