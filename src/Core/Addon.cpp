@@ -2,12 +2,12 @@
 
 #include "imgui/imgui.h"
 
-#include "Combat.h"
 #include "Remote.h"
-#include "UI/UiRoot.h"
 #include "Version.h"
 
-#define ADDON_NAME "Damage Meter"
+#include "Combat/Combat.h"
+#include "TextCache/TextCache.h"
+#include "UI/UiRoot.h"
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef()
 {
@@ -41,6 +41,7 @@ void Addon::Load(AddonAPI_t* aApi)
 {
 	s_APIDefs = aApi;
 
+	TextCache::Create(aApi);
 	Combat::Create(aApi);
 	UiRoot::Create(aApi);
 
@@ -49,6 +50,7 @@ void Addon::Load(AddonAPI_t* aApi)
 
 void Addon::Unload()
 {
+	TextCache::Destroy();
 	Combat::Destroy();
 	UiRoot::Destroy();
 

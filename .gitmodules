@@ -10,3 +10,6 @@
 [submodule "src/thirdparty/Nexus"]
 	path = src/thirdparty/Nexus
 	url = https://github.com/RaidcoreGG/RCGG-lib-nexus-api
+[submodule "src/Util"]
+	path = src/Util
+	url = https://github.com/RaidcoreGG/RCGG-Utils

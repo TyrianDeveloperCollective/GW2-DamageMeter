@@ -174,23 +174,63 @@ CALL Scripts\version.bat</Command>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="src\Core\Addon.cpp" />
-    <ClCompile Include="src\Core\Combat.cpp" />
+    <ClCompile Include="src\Core\Combat\Combat.cpp" />
+    <ClCompile Include="src\Core\TextCache\TextCache.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Agent\Agent.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Char\Character.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Char\ChCliContext.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Common.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Gadget\Gadget.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Gadget\GdAttackTarget.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Player\Player.cpp" />
+    <ClCompile Include="src\GW2RE\Game\PropContext.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Text\TextApi.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Types.cpp" />
+    <ClCompile Include="src\GW2RE\Util\Validation.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui_demo.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui_draw.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui_tables.cpp" />
     <ClCompile Include="src\thirdparty\imgui\imgui_widgets.cpp" />
     <ClCompile Include="src\UI\UiRoot.cpp" />
+    <ClCompile Include="src\Util\src\Strings.cpp" />
+    <ClCompile Include="src\Util\src\Time.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Addon.h" />
-    <ClInclude Include="src\Core\Combat.h" />
+    <ClInclude Include="src\Core\Combat\Combat.h" />
+    <ClInclude Include="src\Core\TextCache\TextCache.h" />
+    <ClInclude Include="src\GW2RE\Game\Agent\Agent.h" />
+    <ClInclude Include="src\GW2RE\Game\Agent\EAgType.h" />
+    <ClInclude Include="src\GW2RE\Game\Char\Character.h" />
+    <ClInclude Include="src\GW2RE\Game\Char\ChCliContext.h" />
+    <ClInclude Include="src\GW2RE\Game\Combat\SkillDef.h" />
+    <ClInclude Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.h" />
+    <ClInclude Include="src\GW2RE\Game\Combat\Tracker\ECbtEventType.h" />
+    <ClInclude Include="src\GW2RE\Game\Common.h" />
+    <ClInclude Include="src\GW2RE\Game\Gadget\Gadget.h" />
+    <ClInclude Include="src\GW2RE\Game\Gadget\GdAttackTarget.h" />
+    <ClInclude Include="src\GW2RE\Game\Player\Player.h" />
+    <ClInclude Include="src\GW2RE\Game\PropContext.h" />
+    <ClInclude Include="src\GW2RE\Game\Text\ETextOperation.h" />
+    <ClInclude Include="src\GW2RE\Game\Text\TextApi.h" />
+    <ClInclude Include="src\GW2RE\Game\Text\Types.h" />
+    <ClInclude Include="src\GW2RE\Game\Types.h" />
+    <ClInclude Include="src\GW2RE\memtools\memtools.h" />
+    <ClInclude Include="src\GW2RE\Util\FuncDefs.h" />
+    <ClInclude Include="src\GW2RE\Util\Hook.h" />
+    <ClInclude Include="src\GW2RE\Util\Offset.h" />
+    <ClInclude Include="src\GW2RE\Util\Validation.h" />
+    <ClInclude Include="src\GW2RE\Util\WrapperClass.h" />
     <ClInclude Include="src\thirdparty\imgui\imgui.h" />
     <ClInclude Include="src\thirdparty\imgui\imgui_internal.h" />
     <ClInclude Include="src\thirdparty\imgui\imstb_rectpack.h" />
     <ClInclude Include="src\thirdparty\imgui\imstb_textedit.h" />
     <ClInclude Include="src\thirdparty\imgui\imstb_truetype.h" />
     <ClInclude Include="src\UI\UiRoot.h" />
+    <ClInclude Include="src\Util\src\Strings.h" />
+    <ClInclude Include="src\Util\src\Time.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
