@@ -10,7 +10,6 @@
 #include "Core/Combat/CbtEncounter.h"
 #include "Core/TextCache/TextCache.h"
 #include "GW2RE/Game/Agent/Agent.h"
-#include "GW2RE/Game/Agent/AgSelectionContext.h"
 #include "GW2RE/Game/Char/Character.h"
 #include "GW2RE/Game/Char/ChCliContext.h"
 #include "GW2RE/Game/Combat/SkillDef.h"
@@ -67,13 +66,6 @@ void Combat::Destroy()
 	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
 
 	if (s_HookCombatTracker) { GW2RE::DestroyHook(s_HookCombatTracker); }
-}
-
-uint32_t Combat::GetTargetID()
-{
-	GW2RE::CAgentSelectionContext agselctx = GW2RE::CAgentSelectionContext::Get();
-	GW2RE::CAgent agent = agselctx.GetTarget();
-	return agent.GetAgentId();
 }
 
 Encounter_t Combat::GetCurrentEncounter()

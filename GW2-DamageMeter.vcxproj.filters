@@ -45,9 +45,6 @@
     <ClCompile Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\GW2RE\Game\Common.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\GW2RE\Game\PropContext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
@@ -82,9 +79,6 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\GW2RE\Game\Char\ChCliContext.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="src\GW2RE\Game\Agent\AgSelectionContext.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\GW2RE\Game\Game\EventApi.cpp">
@@ -129,9 +123,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\GW2RE\Game\Common.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\GW2RE\Game\PropContext.h">
@@ -195,9 +186,6 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\Core\Combat\CbtEvent.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="src\GW2RE\Game\Agent\AgSelectionContext.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="src\GW2RE\Game\Game\EventApi.h">

@@ -177,11 +177,9 @@ CALL Scripts\version.bat</Command>
     <ClCompile Include="src\Core\Combat\Combat.cpp" />
     <ClCompile Include="src\Core\TextCache\TextCache.cpp" />
     <ClCompile Include="src\GW2RE\Game\Agent\Agent.cpp" />
-    <ClCompile Include="src\GW2RE\Game\Agent\AgSelectionContext.cpp" />
     <ClCompile Include="src\GW2RE\Game\Char\Character.cpp" />
     <ClCompile Include="src\GW2RE\Game\Char\ChCliContext.cpp" />
     <ClCompile Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.cpp" />
-    <ClCompile Include="src\GW2RE\Game\Common.cpp" />
     <ClCompile Include="src\GW2RE\Game\Gadget\Gadget.cpp" />
     <ClCompile Include="src\GW2RE\Game\Gadget\GdAttackTarget.cpp" />
     <ClCompile Include="src\GW2RE\Game\Game\EventApi.cpp" />
@@ -206,14 +204,12 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\Core\Combat\CbtEncounter.h" />
     <ClInclude Include="src\Core\TextCache\TextCache.h" />
     <ClInclude Include="src\GW2RE\Game\Agent\Agent.h" />
-    <ClInclude Include="src\GW2RE\Game\Agent\AgSelectionContext.h" />
     <ClInclude Include="src\GW2RE\Game\Agent\EAgType.h" />
     <ClInclude Include="src\GW2RE\Game\Char\Character.h" />
     <ClInclude Include="src\GW2RE\Game\Char\ChCliContext.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\SkillDef.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\Tracker\ECbtEventType.h" />
-    <ClInclude Include="src\GW2RE\Game\Common.h" />
     <ClInclude Include="src\GW2RE\Game\Gadget\Gadget.h" />
     <ClInclude Include="src\GW2RE\Game\Gadget\GdAttackTarget.h" />
     <ClInclude Include="src\GW2RE\Game\Game\EventApi.h" />

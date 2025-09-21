@@ -15,8 +15,6 @@ namespace Combat
 
 	void Destroy();
 
-	uint32_t GetTargetID();
-
 	Encounter_t GetCurrentEncounter();
 }
  

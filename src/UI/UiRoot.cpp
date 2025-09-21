@@ -54,17 +54,7 @@ void UiRoot::Destroy()
 
 void UiRoot::Render()
 {
-	uint32_t targetId = Combat::GetTargetID();
-
-	std::string wndName;
-	wndName.append(
-		targetId != 0
-		? TextCache::GetAgentName(targetId)
-		: "No target."
-	);
-	wndName.append("###RC_Meter");
-
-	if (ImGui::Begin(wndName.c_str()))
+	if (ImGui::Begin("Combat Metrics###RCGG_Meter"))
 	{
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
 
