@@ -15,7 +15,6 @@
 #include "GW2RE/Game/Game/EventApi.h"
 #include "GW2RE/Game/PropContext.h"
 #include "GW2RE/Util/Hook.h"
-#include "GW2RE/Util/Validation.h"
 #include "memtools/memtools.h"
 #include "Util/src/Strings.h"
 
@@ -55,14 +54,6 @@ void Combat::Create(AddonAPI_t* aApi)
 	HookRemove = (FUNC_HOOKREMOVE)s_APIDefs->MinHook_Remove;
 	HookEnable = (FUNC_HOOKENABLE)s_APIDefs->MinHook_Enable;
 	HookDisable = (FUNC_HOOKDISABLE)s_APIDefs->MinHook_Disable;
-
-	std::string err = GW2RE::RunDiag();
-
-	if (!err.empty())
-	{
-		s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, err.c_str());
-		return;
-	}
 
 	GW2RE::CEventApi::Register(GW2RE::EEvent::EngineTick, Advance);
 	
@@ -157,14 +148,9 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	/* Store combat event. */
 	s_Events.push_back(ev);
 
-	/* Kinda hacky way to ensure s_GameThread is set. */
-	TextCache::Advance();
-
 	std::string srcName = TextCache::GetAgentName(aCbtEv->SrcAgent);
 	std::string dstName = TextCache::GetAgentName(aCbtEv->DstAgent);
 	std::string skillName = TextCache::GetSkillName(aCbtEv->SkillDef);
-
-	TextCache::Advance();
 
 	s_APIDefs->Log(
 		LOGL_DEBUG,

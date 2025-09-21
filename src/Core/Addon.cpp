@@ -6,6 +6,7 @@
 #include "Version.h"
 
 #include "Combat/Combat.h"
+#include "GW2RE/Util/Validation.h"
 #include "TextCache/TextCache.h"
 #include "UI/UiRoot.h"
 
@@ -41,11 +42,18 @@ void Addon::Load(AddonAPI_t* aApi)
 {
 	s_APIDefs = aApi;
 
+	std::string err = GW2RE::RunDiag();
+
+	if (!err.empty())
+	{
+		s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, "Cancelled load.");
+		s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, err.c_str());
+		return;
+	}
+
 	TextCache::Create(aApi);
 	Combat::Create(aApi);
 	UiRoot::Create(aApi);
-
-	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Loaded.");
 }
 
 void Addon::Unload()
@@ -53,6 +61,4 @@ void Addon::Unload()
 	TextCache::Destroy();
 	Combat::Destroy();
 	UiRoot::Destroy();
-
-	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Unloaded.");
 }

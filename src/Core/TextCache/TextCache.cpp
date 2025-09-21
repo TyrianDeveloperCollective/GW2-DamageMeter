@@ -1,12 +1,12 @@
 #include "TextCache.h"
 
 #include <mutex>
-#include <unordered_map>
 
 #include "GW2RE/Game/Agent/Agent.h"
 #include "GW2RE/Game/Char/Character.h"
 #include "GW2RE/Game/Gadget/Gadget.h"
 #include "GW2RE/Game/Gadget/GdAttackTarget.h"
+#include "GW2RE/Game/Game/EventApi.h"
 #include "GW2RE/Game/MissionContext.h"
 #include "GW2RE/Game/Player/Player.h"
 #include "GW2RE/Game/PropContext.h"
@@ -17,6 +17,8 @@ namespace TextCache
 {
 	static AddonAPI_t*                               s_APIDefs    = nullptr;
 	static uint32_t                                  s_GameThread = 0;
+
+	void __fastcall Advance(void*, void*);
 
 	typedef GW2RE::CodedText (__fastcall*FN_RESOLVEHASH)(GW2RE::TextHash, ...);
 	static FN_RESOLVEHASH                            s_ResolveHash = nullptr;
@@ -37,14 +39,16 @@ void TextCache::Create(AddonAPI_t* aApi)
 
 	s_ResolveHash = GW2RE::S_ResolveTextHash.Scan<FN_RESOLVEHASH>();
 	s_DecodeText = GW2RE::S_DecodeText.Scan<FN_DECODETEXT>();
+
+	GW2RE::CEventApi::Register(GW2RE::EEvent::EngineTick, Advance);
 }
 
 void TextCache::Destroy()
 {
-	/* Maybe something to ensure we don't destroy before all queued texts are received? */
+	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
 }
 
-void TextCache::Advance()
+void TextCache::Advance(void*, void*)
 {
 	static uint32_t s_LastMapID = 0;
 
@@ -60,9 +64,22 @@ void TextCache::Advance()
 	{
 		s_LastMapID = missionctx->CurrentMapID;
 
-		/* Flush agent name cache. */
-		s_AgentNameLUT.clear();
+		FlushAgentNames();
 	}
+}
+
+std::unordered_map<uint32_t, std::string> TextCache::GetAgentNames()
+{
+	const std::lock_guard<std::mutex> lock(s_Mutex);
+
+	return s_AgentNameLUT;
+}
+
+void TextCache::FlushAgentNames()
+{
+	const std::lock_guard<std::mutex> lock(s_Mutex);
+
+	s_AgentNameLUT.clear();
 }
 
 void __fastcall TextCache::ReceiveText(void* aPtr, const wchar_t* aWString)

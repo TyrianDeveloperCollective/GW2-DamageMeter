@@ -1,6 +1,8 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
+#include <unordered_map>
 
 #include "GW2RE/Game/Agent/Agent.h"
 #include "GW2RE/Game/Combat/SkillDef.h"
@@ -12,7 +14,17 @@ namespace TextCache
 
 	void Destroy();
 
-	void Advance();
+	///----------------------------------------------------------------------------------------------------
+	/// GetAgentNames:
+	/// 	Retrieves all cached agent names.
+	///----------------------------------------------------------------------------------------------------
+	std::unordered_map<uint32_t, std::string> GetAgentNames();
+
+	///----------------------------------------------------------------------------------------------------
+	/// FlushAgentNames:
+	/// 	Flushes the agent name cache.
+	///----------------------------------------------------------------------------------------------------
+	void FlushAgentNames();
 
 	///----------------------------------------------------------------------------------------------------
 	/// GetAgentName:
