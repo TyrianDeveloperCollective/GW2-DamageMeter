@@ -5,15 +5,17 @@
 #include <ctime>
 #include <mutex>
 #include <string>
-#include <unordered_map>
 
 #include "GW2RE/Game/Agent/Agent.h"
+#include "GW2RE/Game/Agent/AgSelectionContext.h"
+#include "GW2RE/Game/Char/Character.h"
 #include "GW2RE/Game/Char/ChCliContext.h"
 #include "GW2RE/Game/Combat/SkillDef.h"
 #include "GW2RE/Game/Combat/Tracker/CombatEvent.h"
-#include "GW2RE/Game/Common.h"
+#include "GW2RE/Game/Game/EventApi.h"
 #include "GW2RE/Game/PropContext.h"
 #include "GW2RE/Util/Hook.h"
+#include "GW2RE/Util/Validation.h"
 #include "memtools/memtools.h"
 #include "Util/src/Strings.h"
 
@@ -38,6 +40,7 @@ namespace Combat
 
 	/* Forward declare internal functions. */
 	uint64_t __fastcall OnCombatEvent(GW2RE::CbtEvent_t*, uint32_t*);
+	void __fastcall Advance(void*, void*);
 }
 
 void Combat::Create(AddonAPI_t* aApi)
@@ -53,15 +56,15 @@ void Combat::Create(AddonAPI_t* aApi)
 	HookEnable = (FUNC_HOOKENABLE)s_APIDefs->MinHook_Enable;
 	HookDisable = (FUNC_HOOKDISABLE)s_APIDefs->MinHook_Disable;
 
-	std::string err = GW2RE::Core::RunDiag();
-
-	GW2RE::Core::UsingTextDecode();
+	std::string err = GW2RE::RunDiag();
 
 	if (!err.empty())
 	{
 		s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, err.c_str());
 		return;
 	}
+
+	GW2RE::CEventApi::Register(GW2RE::EEvent::EngineTick, Advance);
 	
 	s_HookCombatTracker = new GW2RE::Hook<FN_COMBATTRACKER>((FN_COMBATTRACKER)GW2RE::S_FnCombatTracker.Scan(), OnCombatEvent);
 	s_HookCombatTracker->Enable();
@@ -69,6 +72,8 @@ void Combat::Create(AddonAPI_t* aApi)
 
 void Combat::Destroy()
 {
+	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
+
 	if (s_HookCombatTracker) { GW2RE::DestroyHook(s_HookCombatTracker); }
 }
 
@@ -77,6 +82,13 @@ uint32_t Combat::GetSelfID()
 	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
 	GW2RE::CCharCliContext cctx = propctx.GetCharCliCtx();
 	GW2RE::CAgent agent = cctx.GetControlledAgent();
+	return agent.GetAgentId();
+}
+
+uint32_t Combat::GetTargetID()
+{
+	GW2RE::CAgentSelectionContext agselctx = GW2RE::CAgentSelectionContext::Get();
+	GW2RE::CAgent agent = agselctx.GetTarget();
 	return agent.GetAgentId();
 }
 
@@ -168,4 +180,21 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	);
 
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
+}
+
+void __fastcall Combat::Advance(void*, void*)
+{
+	GW2RE::CPropContext    propctx   = GW2RE::CPropContext::Get();
+	GW2RE::CCharCliContext cctx      = propctx.GetCharCliCtx();
+	GW2RE::CCharacter      character = cctx.GetOwnedCharacter();
+
+	bool isInCombat = (character->Flags & GW2RE::ECharacterFlags::IsInCombat) == GW2RE::ECharacterFlags::IsInCombat;
+
+	static bool s_IsInCombat = false;
+
+	if (isInCombat != s_IsInCombat)
+	{
+		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, isInCombat ? "Entered combat." : "Left combat.");
+		s_IsInCombat = isInCombat;
+	}
 }

@@ -82,7 +82,7 @@ std::string TextCache::GetAgentName(uint32_t aID)
 		return it->second;
 	}
 	
-	return "(null)";
+	return String::Format("((%s-%u))", "ag", aID);
 }
 
 std::string TextCache::GetAgentName(GW2RE::CAgent aAgent)
@@ -109,7 +109,7 @@ std::string TextCache::GetAgentName(GW2RE::CAgent aAgent)
 			case GW2RE::EAgentType::Gadget:               { prefix = "gd"; break; }
 			case GW2RE::EAgentType::Gadget_Attack_Target: { prefix = "at"; break; }
 		}
-		result = String::Format("((%s-%04x))", prefix.c_str(), aAgent.GetAgentId());
+		result = String::Format("((%s-%u))", prefix.c_str(), aAgent.GetAgentId());
 		s_AgentNameLUT.emplace(aAgent.GetAgentId(), result);
 	}
 
@@ -170,7 +170,7 @@ std::string TextCache::GetSkillName(uint32_t aID)
 		return it->second;
 	}
 
-	return "(null)";
+	return String::Format("((sk-%u))", aID);
 }
 
 std::string TextCache::GetSkillName(GW2RE::SkillDef_t* aSkill)
@@ -189,7 +189,7 @@ std::string TextCache::GetSkillName(GW2RE::SkillDef_t* aSkill)
 	}
 	else
 	{
-		result = String::Format("((sk-%04x))", aSkill->ID);
+		result = String::Format("((sk-%u))", aSkill->ID);
 		s_SkillLUT.emplace(aSkill->ID, result);
 	}
 

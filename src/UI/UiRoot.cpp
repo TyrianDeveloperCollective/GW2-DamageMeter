@@ -42,41 +42,59 @@ void UiRoot::Destroy()
 void UiRoot::Render()
 {
 	RefreshData();
+
+	uint32_t targetId = Combat::GetTargetID();
+
+	std::string wndName;
+	wndName.append(
+		targetId != 0
+		? TextCache::GetAgentName(targetId)
+		: "No target."
+	);
+	wndName.append("###RC_Meter");
+
+	if (ImGui::Begin(wndName.c_str()))
+	{
+		ImGui::TextDisabled("Dmg: %.0f", s_TotalDmg);
+		ImGui::TextDisabled("Heal: %.0f", s_TotalHeal);
+		ImGui::TextDisabled("Barrier: %.0f", s_TotalBarrier);
+
+		ImGui::Separator();
+
+		ImGui::TextDisabled("Agents");
+		for (uint32_t id : s_Agents)
+		{
+			if (Combat::GetSelfID() == id)
+			{
+				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0, 1.0f), TextCache::GetAgentName(id).c_str());
+			}
+			else
+			{
+				ImGui::Text(TextCache::GetAgentName(id).c_str());
+			}
+		}
+
+		ImGui::Separator();
+
+		ImGui::TextDisabled("Skills");
+		for (uint32_t id : s_Skills)
+		{
+			ImGui::Text(TextCache::GetSkillName(id).c_str());
+		}
+	}
+	ImGui::End();
 }
 
 void UiRoot::Options()
 {
-	ImGui::TextDisabled("Dmg: %.0f", s_TotalDmg);
-	ImGui::TextDisabled("Heal: %.0f", s_TotalHeal);
-	ImGui::TextDisabled("Barrier: %.0f", s_TotalBarrier);
-
-	ImGui::TextDisabled("Agents");
-	for (uint32_t id : s_Agents)
-	{
-		if (Combat::GetSelfID() == id)
-		{
-			ImGui::TextColored(ImVec4(1.0f, 1.0f, 0, 1.0f), TextCache::GetAgentName(id).c_str());
-		}
-		else
-		{
-			ImGui::Text(TextCache::GetAgentName(id).c_str());
-		}
-	}
-
-	ImGui::Separator();
-
-	ImGui::TextDisabled("Skills");
-	for (uint32_t id : s_Skills)
-	{
-		ImGui::Text(TextCache::GetSkillName(id).c_str());
-	}
+	
 }
 
 void UiRoot::RefreshData()
 {
-	static long long s_LastRefresh = 0;
+	static uint64_t s_LastRefresh = 0;
 
-	long long now = Time::GetTimestampMs();
+	uint64_t now = Time::GetTimestampMs();
 
 	if (now - s_LastRefresh < 1000)
 	{
