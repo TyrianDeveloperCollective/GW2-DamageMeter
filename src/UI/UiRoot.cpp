@@ -6,6 +6,9 @@
 
 #include "Core/Combat/Combat.h"
 #include "Core/TextCache/TextCache.h"
+#include "GW2RE/Game/Map/MapDef.h"
+#include "GW2RE/Game/MissionContext.h"
+#include "GW2RE/Game/PropContext.h"
 #include "Util/src/Time.h"
 
 namespace UiRoot
@@ -54,6 +57,17 @@ void UiRoot::Destroy()
 
 void UiRoot::Render()
 {
+	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
+	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
+
+	if (missionctx && missionctx->CurrentMap && missionctx->CurrentMap->PvP)
+	{
+		ImGui::Begin("Combat Metrics###RCGG_Meter");
+		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), "Disabled in PvP.");
+		ImGui::End();
+		return;
+	}
+
 	if (ImGui::Begin("Combat Metrics###RCGG_Meter"))
 	{
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;

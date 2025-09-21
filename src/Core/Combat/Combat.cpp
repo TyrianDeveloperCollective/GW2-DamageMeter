@@ -15,6 +15,8 @@
 #include "GW2RE/Game/Combat/SkillDef.h"
 #include "GW2RE/Game/Combat/Tracker/CombatEvent.h"
 #include "GW2RE/Game/Game/EventApi.h"
+#include "GW2RE/Game/Map/MapDef.h"
+#include "GW2RE/Game/MissionContext.h"
 #include "GW2RE/Game/PropContext.h"
 #include "GW2RE/Util/Hook.h"
 #include "memtools/memtools.h"
@@ -78,6 +80,15 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	const std::lock_guard<std::mutex> lock(s_HookCombatTracker->Mutex);
 
 	GW2RE::CCbtEv aCbtEv = aCombatEvent;
+
+	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
+	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
+
+	/* If no active map, or active map is PvP, do not process. */
+	if (!missionctx || (missionctx->CurrentMap && missionctx->CurrentMap->PvP))
+	{
+		return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
+	}
 
 	/* Filter display events. */
 	if (!aCbtEv || aCbtEv.IsDisplayedBuffDamage())
