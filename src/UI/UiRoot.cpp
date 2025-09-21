@@ -10,14 +10,21 @@
 
 namespace UiRoot
 {
-	static AddonAPI_t* s_APIDefs = nullptr;
+	struct DisplayEncounter_t
+	{
+		Encounter_t           Encounter    = {};
+		std::vector<uint32_t> Skills;
+		std::vector<uint32_t> Agents;
+
+		float                 TotalDmg     = 0.f;
+		float                 TotalHeal    = 0.f;
+		float                 TotalBarrier = 0.f;
+	};
+
+	static AddonAPI_t*           s_APIDefs = nullptr;
 	
 	static std::mutex            s_Mutex;
-	static std::vector<uint32_t> s_Agents;
-	static std::vector<uint32_t> s_Skills;
-	static float s_TotalDmg;
-	static float s_TotalHeal;
-	static float s_TotalBarrier;
+	static DisplayEncounter_t    s_DisplayedEncounter;
 
 	void RefreshData();
 }
@@ -55,16 +62,37 @@ void UiRoot::Render()
 
 	if (ImGui::Begin(wndName.c_str()))
 	{
-		ImGui::TextDisabled("Dmg: %.0f", s_TotalDmg);
-		ImGui::TextDisabled("Heal: %.0f", s_TotalHeal);
-		ImGui::TextDisabled("Barrier: %.0f", s_TotalBarrier);
+		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
+
+		time_t timeStart = s_DisplayedEncounter.Encounter.TimeStart / 1000;
+		tm tmStart{};
+		localtime_s(&tmStart, &timeStart);
+		char startTime[64];
+		strftime(startTime, sizeof(startTime), "%H:%M:%S", &tmStart);
+
+		time_t timeEnd = s_DisplayedEncounter.Encounter.TimeEnd / 1000;
+		tm tmEnd{};
+		localtime_s(&tmEnd, &timeEnd);
+		char endTime[64];
+		strftime(endTime, sizeof(endTime), "%H:%M:%S", &tmEnd);
+
+		ImGui::Text("Combat start: %s.%u", startTime, s_DisplayedEncounter.Encounter.TimeStart % 1000);
+		ImGui::Text("Combat end: %s.%u", endTime, s_DisplayedEncounter.Encounter.TimeEnd % 1000);
+		ImGui::Text("Duration: %llu.%llus", cbtDurationMs / 1000, cbtDurationMs % 1000);
+
+		ImGui::TextDisabled("D/s: %.0f", abs(s_DisplayedEncounter.TotalDmg) / (cbtDurationMs / 1000.f));
+		ImGui::TextDisabled("Dmg: %.0f", abs(s_DisplayedEncounter.TotalDmg));
+		ImGui::TextDisabled("H/s: %.0f", s_DisplayedEncounter.TotalHeal / (cbtDurationMs / 1000.f));
+		ImGui::TextDisabled("Heal: %.0f", s_DisplayedEncounter.TotalHeal);
+		ImGui::TextDisabled("B/s: %.0f", s_DisplayedEncounter.TotalBarrier / (cbtDurationMs / 1000.f));
+		ImGui::TextDisabled("Barr: %.0f", s_DisplayedEncounter.TotalBarrier);
 
 		ImGui::Separator();
 
 		ImGui::TextDisabled("Agents");
-		for (uint32_t id : s_Agents)
+		for (uint32_t id : s_DisplayedEncounter.Agents)
 		{
-			if (Combat::GetSelfID() == id)
+			if (s_DisplayedEncounter.Encounter.SelfID == id)
 			{
 				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0, 1.0f), TextCache::GetAgentName(id).c_str());
 			}
@@ -77,7 +105,7 @@ void UiRoot::Render()
 		ImGui::Separator();
 
 		ImGui::TextDisabled("Skills");
-		for (uint32_t id : s_Skills)
+		for (uint32_t id : s_DisplayedEncounter.Skills)
 		{
 			ImGui::Text(TextCache::GetSkillName(id).c_str());
 		}
@@ -103,49 +131,52 @@ void UiRoot::RefreshData()
 
 	s_LastRefresh = now;
 
-	std::vector<CombatEvent_t*> events = Combat::GetCombatEvents();
-
 	const std::lock_guard<std::mutex> lock(s_Mutex);
 
-	s_Agents.clear();
-	s_Skills.clear();
-	s_TotalDmg = 0;
-	s_TotalHeal = 0;
-	s_TotalBarrier = 0;
+	Encounter_t currentEncounter = Combat::GetCurrentEncounter();
 
-	uint32_t self = Combat::GetSelfID();
-
-	for (CombatEvent_t* ev : events)
+	if (currentEncounter.TimeStart != s_DisplayedEncounter.Encounter.TimeStart)
 	{
-		if (std::find(s_Agents.begin(), s_Agents.end(), ev->SrcAgentID) == s_Agents.end())
+		/* TODO: Store old display encounter. */
+		s_DisplayedEncounter = {};
+	}
+
+	s_DisplayedEncounter.Encounter = currentEncounter;
+	s_DisplayedEncounter.TotalDmg = 0;
+	s_DisplayedEncounter.TotalHeal = 0;
+	s_DisplayedEncounter.TotalBarrier = 0;
+
+	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
+	{
+		if (std::find(s_DisplayedEncounter.Agents.begin(), s_DisplayedEncounter.Agents.end(), ev->SrcAgentID) == s_DisplayedEncounter.Agents.end())
 		{
-			s_Agents.push_back(ev->SrcAgentID);
+			s_DisplayedEncounter.Agents.push_back(ev->SrcAgentID);
 		}
 
-		if (ev->SrcAgentID == self )
+		if (ev->SrcAgentID == s_DisplayedEncounter.Encounter.SelfID)
 		{
 			if (ev->Value < 0)
 			{
-				s_TotalDmg += ev->Value;
+				s_DisplayedEncounter.TotalDmg += ev->Value;
 			}
 			else if (ev->Value > 0)
 			{
-				s_TotalHeal += ev->Value;
+				s_DisplayedEncounter.TotalHeal += ev->Value;
 			}
 			else if (ev->ValueAlt > 0)
 			{
-				s_TotalBarrier += ev->ValueAlt;
+				s_DisplayedEncounter.TotalBarrier += ev->ValueAlt;
 			}
 		}
 
-		if (std::find(s_Agents.begin(), s_Agents.end(), ev->DstAgentID) == s_Agents.end())
+		if (std::find(s_DisplayedEncounter.Agents.begin(), s_DisplayedEncounter.Agents.end(), ev->DstAgentID) == s_DisplayedEncounter.Agents.end())
 		{
-			s_Agents.push_back(ev->DstAgentID);
+			s_DisplayedEncounter.Agents.push_back(ev->DstAgentID);
 		}
 
-		if (std::find(s_Skills.begin(), s_Skills.end(), ev->SkillID) == s_Skills.end())
+		if (std::find(s_DisplayedEncounter.Skills.begin(), s_DisplayedEncounter.Skills.end(), ev->SkillID) == s_DisplayedEncounter.Skills.end())
 		{
-			s_Skills.push_back(ev->SkillID);
+			s_DisplayedEncounter.Skills.push_back(ev->SkillID);
 		}
 	}
 }

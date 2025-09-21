@@ -9,10 +9,10 @@
 
 struct Encounter_t
 {
-	uint64_t                                  TimeStart;
-	uint64_t                                  TimeEnd;
+	uint64_t                                  TimeStart    = 0;
+	uint64_t                                  TimeEnd      = 0;
 
-	uint32_t                                  SelfID;
+	uint32_t                                  SelfID       = 0;
 
 	std::unordered_map<uint32_t, std::string> AgentNameLUT;
 	std::vector<CombatEvent_t*>               CombatEvents;

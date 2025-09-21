@@ -2,8 +2,9 @@
 
 #include <vector>
 
+#include "Core/Combat/CbtEncounter.h"
+#include "Core/Combat/CbtEvent.h"
 #include "Nexus/Nexus.h"
-#include "CbtEvent.h"
 
 namespace Combat
 {
@@ -11,10 +12,8 @@ namespace Combat
 
 	void Destroy();
 
-	uint32_t GetSelfID();
-
 	uint32_t GetTargetID();
 
-	std::vector<CombatEvent_t*> GetCombatEvents();
+	Encounter_t GetCurrentEncounter();
 }
  
