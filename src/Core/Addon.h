@@ -2,6 +2,7 @@
 
 #include "Nexus/Nexus.h"
 
+#define ADDON_SIG   0xCCCCCCCC
 #define ADDON_NAME "Damage Meter"
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef();

@@ -14,7 +14,7 @@ extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef()
 {
 	static AddonDefinition_t s_AddonDef;
 
-	s_AddonDef.Signature        = 0xCCCCCCCC;
+	s_AddonDef.Signature        = ADDON_SIG;
 	s_AddonDef.APIVersion       = NEXUS_API_VERSION;
 	s_AddonDef.Name             = ADDON_NAME;
 	s_AddonDef.Version.Major    = V_MAJOR;

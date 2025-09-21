@@ -26,7 +26,7 @@ namespace UiRoot
 	static std::mutex            s_Mutex;
 	static DisplayEncounter_t    s_DisplayedEncounter;
 
-	void RefreshData();
+	void OnCombatEvent();
 }
 
 void UiRoot::Create(AddonAPI_t* aApi)
@@ -38,18 +38,22 @@ void UiRoot::Create(AddonAPI_t* aApi)
 
 	s_APIDefs->GUI_Register(RT_Render, UiRoot::Render);
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
+
+	s_APIDefs->Events_Subscribe(EV_CCCCCCCC_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Subscribe(EV_CCCCCCCC_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 }
 
 void UiRoot::Destroy()
 {
+	s_APIDefs->Events_Unsubscribe(EV_CCCCCCCC_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Unsubscribe(EV_CCCCCCCC_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
+
 	s_APIDefs->GUI_Deregister(UiRoot::Render);
 	s_APIDefs->GUI_Deregister(UiRoot::Options);
 }
 
 void UiRoot::Render()
 {
-	RefreshData();
-
 	uint32_t targetId = Combat::GetTargetID();
 
 	std::string wndName;
@@ -64,21 +68,18 @@ void UiRoot::Render()
 	{
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
 
-		time_t timeStart = s_DisplayedEncounter.Encounter.TimeStart / 1000;
-		tm tmStart{};
-		localtime_s(&tmStart, &timeStart);
-		char startTime[64];
-		strftime(startTime, sizeof(startTime), "%H:%M:%S", &tmStart);
+		float ms = (cbtDurationMs % 1000) / 1000.f;
+		uint64_t s = (cbtDurationMs / 1000) % 60;
+		uint64_t m = (cbtDurationMs / 1000) / 60;
 
-		time_t timeEnd = s_DisplayedEncounter.Encounter.TimeEnd / 1000;
-		tm tmEnd{};
-		localtime_s(&tmEnd, &timeEnd);
-		char endTime[64];
-		strftime(endTime, sizeof(endTime), "%H:%M:%S", &tmEnd);
-
-		ImGui::Text("Combat start: %s.%u", startTime, s_DisplayedEncounter.Encounter.TimeStart % 1000);
-		ImGui::Text("Combat end: %s.%u", endTime, s_DisplayedEncounter.Encounter.TimeEnd % 1000);
-		ImGui::Text("Duration: %llu.%llus", cbtDurationMs / 1000, cbtDurationMs % 1000);
+		if (m > 0)
+		{
+			ImGui::Text("Duration: %llum%.2fs", m, s + ms);
+		}
+		else
+		{
+			ImGui::Text("Duration: %.2fs", s + ms);
+		}
 
 		ImGui::TextDisabled("D/s: %.0f", abs(s_DisplayedEncounter.TotalDmg) / (cbtDurationMs / 1000.f));
 		ImGui::TextDisabled("Dmg: %.0f", abs(s_DisplayedEncounter.TotalDmg));
@@ -118,19 +119,8 @@ void UiRoot::Options()
 	
 }
 
-void UiRoot::RefreshData()
+void UiRoot::OnCombatEvent()
 {
-	static uint64_t s_LastRefresh = 0;
-
-	uint64_t now = Time::GetTimestampMs();
-
-	if (now - s_LastRefresh < 1000)
-	{
-		return;
-	}
-
-	s_LastRefresh = now;
-
 	const std::lock_guard<std::mutex> lock(s_Mutex);
 
 	Encounter_t currentEncounter = Combat::GetCurrentEncounter();
