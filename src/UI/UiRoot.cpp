@@ -1,5 +1,6 @@
 #include "UiRoot.h"
 
+#include <algorithm>
 #include <mutex>
 
 #include "imgui/imgui.h"
@@ -64,6 +65,21 @@ void UiRoot::Destroy()
 	s_APIDefs->GUI_Deregister(UiRoot::Options);
 }
 
+void TooltipGeneric(const char* aFmt, ...)
+{
+	if (strlen(aFmt) == 0) { return; }
+
+	if (ImGui::IsItemHovered())
+	{
+		ImGui::BeginTooltip();
+		va_list args;
+		va_start(args, aFmt);
+		ImGui::TextV(aFmt, args);
+		va_end(args);
+		ImGui::EndTooltip();
+	}
+}
+
 void UiRoot::Render()
 {
 	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
@@ -97,6 +113,7 @@ void UiRoot::Render()
 
 	if (ImGui::Begin(wndName.c_str(), 0, wndFlags))
 	{
+		const std::lock_guard<std::mutex> lock(s_Mutex);
 		if (ImGui::SmallButton(s_Incoming ? "incoming" : "outgoing"))
 		{
 			s_Incoming = !s_Incoming;
@@ -131,7 +148,7 @@ void UiRoot::Render()
 			}
 			else
 			{
-				if (ImGui::Selectable("Self", s_Target == 0))
+				if (ImGui::Selectable(s_Incoming ? "Self" : "Cleave", s_Target == 0))
 				{
 					s_Target = 0;
 					CalculateTotals();
@@ -141,7 +158,11 @@ void UiRoot::Render()
 
 			for (uint32_t id : s_DisplayedEncounter.Agents)
 			{
-				if (s_DisplayedEncounter.Encounter.SelfID == id)
+				if (id == s_DisplayedEncounter.Encounter.SelfID)
+				{
+					continue;
+				}
+				else if (id == 0)
 				{
 					continue;
 				}
@@ -153,6 +174,7 @@ void UiRoot::Render()
 
 					btnId.append("###");
 					btnId.append(std::to_string(id));
+
 					if (ImGui::Selectable(btnId.c_str(), s_Target == id))
 					{
 						if (s_Target != id)
@@ -184,9 +206,11 @@ void UiRoot::Render()
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalDmg));
 
 				ImGui::TableSetColumnIndex(2);
 				ImGui::Text(String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg)).c_str());
+				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalDmg));
 
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
@@ -194,9 +218,11 @@ void UiRoot::Render()
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalHeal));
 
 				ImGui::TableSetColumnIndex(2);
 				ImGui::Text(String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal).c_str());
+				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalHeal));
 
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
@@ -204,9 +230,11 @@ void UiRoot::Render()
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalBarrier));
 
 				ImGui::TableSetColumnIndex(2);
 				ImGui::Text(String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier).c_str());
+				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalBarrier));
 			}
 			ImGui::EndTable();
 		}
@@ -273,15 +301,29 @@ void UiRoot::CalculateTotals()
 
 	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
 	{
-		uint32_t target = s_Target != 0 ? s_Target : s_DisplayedEncounter.Encounter.SelfID;
-
 		if (s_Incoming)
 		{
-			if (ev->DstAgentID != target) { continue; }
+			if (s_Target == 0) /* self */
+			{
+				/* if not self, skip */
+				if (ev->DstAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
+			}
+			else /* specific agent */
+			{
+				if (ev->DstAgentID != s_Target) { continue; }
+			}
 		}
 		else /* outgoing */
 		{
-			if (ev->SrcAgentID != target) { continue; }
+			if (s_Target == 0) /* self */
+			{
+				/* if not self, skip */
+				if (ev->SrcAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
+			}
+			else /* specific agent */
+			{
+				if (ev->SrcAgentID != s_Target) { continue; }
+			}
 		}
 
 		if (ev->Value < 0)

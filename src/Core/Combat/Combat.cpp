@@ -85,6 +85,11 @@ bool Combat::IsRegistered()
 	return s_HookCombatTracker != nullptr;
 }
 
+bool Combat::IsActive()
+{
+	return s_IsInCombat;
+}
+
 Encounter_t Combat::GetCurrentEncounter()
 {
 	return s_CurrentEncounter;

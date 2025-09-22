@@ -14,6 +14,8 @@ namespace Combat
 
 	bool IsRegistered();
 
+	bool IsActive();
+
 	Encounter_t GetCurrentEncounter();
 }
  
