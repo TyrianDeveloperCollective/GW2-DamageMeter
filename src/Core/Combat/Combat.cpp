@@ -188,18 +188,20 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 
 	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CCCCCCCC_COMBAT);
 	
+#ifdef _DEBUG
 	s_APIDefs->Log(
 		LOGL_DEBUG,
 		ADDON_NAME,
 		String::Format(
-		"<c=#00ff00>%s</c> hits <c=#ff0000>%s</c> using <c=#0000ff>%s</c> with %.0f (%.0f).",
-		srcName.c_str(),
-		dstName.c_str(),
-		skillName.c_str(),
-		ev->Value,
-		ev->ValueAlt
+			"<c=#00ff00>%s</c> hits <c=#ff0000>%s</c> using <c=#0000ff>%s</c> with %.0f (%.0f).",
+			srcName.c_str(),
+			dstName.c_str(),
+			skillName.c_str(),
+			ev->Value,
+			ev->ValueAlt
 		).c_str()
 	);
+#endif
 
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }

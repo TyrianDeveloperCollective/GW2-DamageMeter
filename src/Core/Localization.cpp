@@ -13,8 +13,17 @@ void Localization::Init(AddonAPI_t* aApi)
 {
 	s_APIDefs = aApi;
 
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Barrier), "en", "Barrier");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Barrier), "de", "Schild");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Cleave), "en", "Cleave");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Cleave), "de", "Spalten");
+
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::CombatMetrics), "en", "Combat Metrics");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::CombatMetrics), "de", "Kampfstatistiken");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Damage), "en", "Damage");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Damage), "de", "Schaden");
 
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::DisabledCombatTracker), "en", "Combat Tracker not registered.");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::DisabledCombatTracker), "de", "Kampfprotokoll nicht registriert.");
@@ -24,6 +33,18 @@ void Localization::Init(AddonAPI_t* aApi)
 
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Duration), "en", "Duration");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Duration), "de", "Dauer");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Heal), "en", "Heal");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Heal), "de", "Heilung");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::NoTargets), "en", "No targets.");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::NoTargets), "de", "Keine Gegner.");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Incoming), "en", "Incoming");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Incoming), "de", "Erhalten");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Outgoing), "en", "Outgoing");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Outgoing), "de", "Verteilt");
 }
 
 const char* Translate(ETexts aID)

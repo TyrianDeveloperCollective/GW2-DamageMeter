@@ -4,10 +4,17 @@
 
 enum class ETexts
 {
+	Barrier,
+	Cleave,
 	CombatMetrics,
+	Damage,
 	DisabledCombatTracker,
 	DisabledInPvP,
-	Duration
+	Duration,
+	Heal,
+	NoTargets,
+	Incoming,
+	Outgoing
 };
 
 namespace Localization

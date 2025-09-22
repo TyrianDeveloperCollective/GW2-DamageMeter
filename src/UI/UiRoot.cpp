@@ -114,7 +114,7 @@ void UiRoot::Render()
 	if (ImGui::Begin(wndName.c_str(), 0, wndFlags))
 	{
 		const std::lock_guard<std::mutex> lock(s_Mutex);
-		if (ImGui::SmallButton(s_Incoming ? "incoming" : "outgoing"))
+		if (ImGui::SmallButton(s_Incoming ? Translate(ETexts::Incoming) : Translate(ETexts::Outgoing)))
 		{
 			s_Incoming = !s_Incoming;
 			CalculateTotals();
@@ -143,17 +143,17 @@ void UiRoot::Render()
 		{
 			if (s_DisplayedEncounter.Agents.size() == 0)
 			{
-				ImGui::TextDisabled("No targets.");
-				textWidth = max(textWidth, ImGui::CalcTextSize("No targets.").x);
+				ImGui::TextDisabled(Translate(ETexts::NoTargets));
+				textWidth = max(textWidth, ImGui::CalcTextSize(Translate(ETexts::NoTargets)).x);
 			}
 			else
 			{
-				if (ImGui::Selectable(s_Incoming ? "Self" : "Cleave", s_Target == 0))
+				if (ImGui::Selectable(Translate(ETexts::Cleave), s_Target == 0))
 				{
 					s_Target = 0;
 					CalculateTotals();
 				}
-				textWidth = max(textWidth, ImGui::CalcTextSize("Self").x);
+				textWidth = max(textWidth, ImGui::CalcTextSize(Translate(ETexts::Cleave)).x);
 			}
 
 			for (uint32_t id : s_DisplayedEncounter.Agents)
@@ -202,7 +202,7 @@ void UiRoot::Render()
 			{
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Damage");
+				ImGui::Text(Translate(ETexts::Damage));
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
@@ -214,7 +214,7 @@ void UiRoot::Render()
 
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Heal");
+				ImGui::Text(Translate(ETexts::Heal));
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
@@ -226,7 +226,7 @@ void UiRoot::Render()
 
 				ImGui::TableNextRow();
 				ImGui::TableSetColumnIndex(0);
-				ImGui::Text("Barrier");
+				ImGui::Text(Translate(ETexts::Barrier));
 
 				ImGui::TableSetColumnIndex(1);
 				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
