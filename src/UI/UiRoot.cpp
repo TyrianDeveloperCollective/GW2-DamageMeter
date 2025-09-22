@@ -10,7 +10,7 @@
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
 #include "GW2RE/Game/PropContext.h"
-#include "Util/src/Time.h"
+#include "Util/src/Strings.h"
 
 namespace UiRoot
 {
@@ -30,7 +30,11 @@ namespace UiRoot
 	static std::mutex            s_Mutex;
 	static DisplayEncounter_t    s_DisplayedEncounter;
 
+	static bool                  s_Incoming = false;
+	static uint32_t              s_Target   = 0;
+
 	void OnCombatEvent();
+	void CalculateTotals();
 }
 
 void UiRoot::Create(AddonAPI_t* aApi)
@@ -68,9 +72,16 @@ void UiRoot::Render()
 	std::string wndName = Translate(ETexts::CombatMetrics);
 	wndName.append("###RCGG_Meter");
 
+	ImGuiWindowFlags wndFlags = ImGuiWindowFlags_AlwaysAutoResize;
+
+	static float s_WndHeight = 150.f;
+	float wndHeight = .0f;
+
+	ImGui::SetNextWindowSize(ImVec2(.0f, s_WndHeight));
+
 	if (missionctx && missionctx->CurrentMap && missionctx->CurrentMap->PvP)
 	{
-		ImGui::Begin(wndName.c_str());
+		ImGui::Begin(wndName.c_str(), 0, wndFlags);
 		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledInPvP));
 		ImGui::End();
 		return;
@@ -78,17 +89,22 @@ void UiRoot::Render()
 
 	if (!Combat::IsRegistered())
 	{
-		ImGui::Begin(wndName.c_str());
+		ImGui::Begin(wndName.c_str(), 0, wndFlags);
 		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledCombatTracker));
 		ImGui::End();
 		return;
 	}
 
-	if (ImGui::Begin(wndName.c_str()))
+	if (ImGui::Begin(wndName.c_str(), 0, wndFlags))
 	{
+		if (ImGui::SmallButton(s_Incoming ? "incoming" : "outgoing"))
+		{
+			s_Incoming = !s_Incoming;
+			CalculateTotals();
+		}
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
 
-		float ms = (cbtDurationMs % 1000) / 1000.f;
+		/*float ms = (cbtDurationMs % 1000) / 1000.f;
 		uint64_t s = (cbtDurationMs / 1000) % 60;
 		uint64_t m = (cbtDurationMs / 1000) / 60;
 
@@ -99,37 +115,112 @@ void UiRoot::Render()
 		else
 		{
 			ImGui::Text("%s: %.2fs", Translate(ETexts::Duration), s + ms);
-		}
-
-		ImGui::TextDisabled("D/s: %.0f", abs(s_DisplayedEncounter.TotalDmg) / (cbtDurationMs / 1000.f));
-		ImGui::TextDisabled("Dmg: %.0f", abs(s_DisplayedEncounter.TotalDmg));
-		ImGui::TextDisabled("H/s: %.0f", s_DisplayedEncounter.TotalHeal / (cbtDurationMs / 1000.f));
-		ImGui::TextDisabled("Heal: %.0f", s_DisplayedEncounter.TotalHeal);
-		ImGui::TextDisabled("B/s: %.0f", s_DisplayedEncounter.TotalBarrier / (cbtDurationMs / 1000.f));
-		ImGui::TextDisabled("Barr: %.0f", s_DisplayedEncounter.TotalBarrier);
+		}*/
 
 		ImGui::Separator();
 
-		ImGui::TextDisabled("Agents");
-		for (uint32_t id : s_DisplayedEncounter.Agents)
+		static float s_TextWidth = 50.f;
+		float textWidth = .0f;
+		float agentSelectorWidth = s_TextWidth + ((ImGui::GetStyle().FramePadding.x + ImGui::GetStyle().WindowPadding.x) * 2);
+		if (ImGui::BeginChild("Agents", ImVec2(agentSelectorWidth, .0f), false))
 		{
-			if (s_DisplayedEncounter.Encounter.SelfID == id)
+			if (s_DisplayedEncounter.Agents.size() == 0)
 			{
-				ImGui::TextColored(ImVec4(1.0f, 1.0f, 0, 1.0f), TextCache::GetAgentName(id).c_str());
+				ImGui::TextDisabled("No targets.");
+				textWidth = max(textWidth, ImGui::CalcTextSize("No targets.").x);
 			}
 			else
 			{
-				ImGui::Text(TextCache::GetAgentName(id).c_str());
+				if (ImGui::Selectable("Self", s_Target == 0))
+				{
+					s_Target = 0;
+					CalculateTotals();
+				}
+				textWidth = max(textWidth, ImGui::CalcTextSize("Self").x);
 			}
+
+			for (uint32_t id : s_DisplayedEncounter.Agents)
+			{
+				if (s_DisplayedEncounter.Encounter.SelfID == id)
+				{
+					continue;
+				}
+				else
+				{
+					std::string btnId = TextCache::GetAgentName(id);
+
+					textWidth = max(textWidth, ImGui::CalcTextSize(btnId.c_str()).x);
+
+					btnId.append("###");
+					btnId.append(std::to_string(id));
+					if (ImGui::Selectable(btnId.c_str(), s_Target == id))
+					{
+						if (s_Target != id)
+						{
+							s_Target = id;
+						}
+						else
+						{
+							s_Target = 0;
+						}
+						CalculateTotals();
+					}
+				}
+			}
+
+			s_TextWidth = textWidth;
 		}
+		ImGui::EndChild();
 
-		ImGui::Separator();
+		ImGui::SameLine();
 
-		ImGui::TextDisabled("Skills");
-		for (uint32_t id : s_DisplayedEncounter.Skills)
+		ImGui::BeginGroup();
 		{
-			ImGui::Text(TextCache::GetSkillName(id).c_str());
+			if (ImGui::BeginTable("Data", 3))
+			{
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("Damage");
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text(String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg)).c_str());
+
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("Heal");
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text(String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal).c_str());
+
+				ImGui::TableNextRow();
+				ImGui::TableSetColumnIndex(0);
+				ImGui::Text("Barrier");
+
+				ImGui::TableSetColumnIndex(1);
+				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+
+				ImGui::TableSetColumnIndex(2);
+				ImGui::Text(String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier).c_str());
+			}
+			ImGui::EndTable();
 		}
+		ImGui::EndGroup();
+		wndHeight = max(wndHeight, ImGui::GetCursorPosY());
+		s_WndHeight = ceilf(wndHeight) + 1.f;
+
+		//ImGui::Separator();
+
+		//ImGui::TextDisabled("Skills");
+		//for (uint32_t id : s_DisplayedEncounter.Skills)
+		//{
+		//	ImGui::Text(TextCache::GetSkillName(id).c_str());
+		//}
 	}
 	ImGui::End();
 }
@@ -152,31 +243,12 @@ void UiRoot::OnCombatEvent()
 	}
 
 	s_DisplayedEncounter.Encounter = currentEncounter;
-	s_DisplayedEncounter.TotalDmg = 0;
-	s_DisplayedEncounter.TotalHeal = 0;
-	s_DisplayedEncounter.TotalBarrier = 0;
 
 	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
 	{
 		if (std::find(s_DisplayedEncounter.Agents.begin(), s_DisplayedEncounter.Agents.end(), ev->SrcAgentID) == s_DisplayedEncounter.Agents.end())
 		{
 			s_DisplayedEncounter.Agents.push_back(ev->SrcAgentID);
-		}
-
-		if (ev->SrcAgentID == s_DisplayedEncounter.Encounter.SelfID)
-		{
-			if (ev->Value < 0)
-			{
-				s_DisplayedEncounter.TotalDmg += ev->Value;
-			}
-			else if (ev->Value > 0)
-			{
-				s_DisplayedEncounter.TotalHeal += ev->Value;
-			}
-			else if (ev->ValueAlt > 0)
-			{
-				s_DisplayedEncounter.TotalBarrier += ev->ValueAlt;
-			}
 		}
 
 		if (std::find(s_DisplayedEncounter.Agents.begin(), s_DisplayedEncounter.Agents.end(), ev->DstAgentID) == s_DisplayedEncounter.Agents.end())
@@ -187,6 +259,42 @@ void UiRoot::OnCombatEvent()
 		if (std::find(s_DisplayedEncounter.Skills.begin(), s_DisplayedEncounter.Skills.end(), ev->SkillID) == s_DisplayedEncounter.Skills.end())
 		{
 			s_DisplayedEncounter.Skills.push_back(ev->SkillID);
+		}
+	}
+
+	UiRoot::CalculateTotals();
+}
+
+void UiRoot::CalculateTotals()
+{
+	s_DisplayedEncounter.TotalDmg = 0;
+	s_DisplayedEncounter.TotalHeal = 0;
+	s_DisplayedEncounter.TotalBarrier = 0;
+
+	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
+	{
+		uint32_t target = s_Target != 0 ? s_Target : s_DisplayedEncounter.Encounter.SelfID;
+
+		if (s_Incoming)
+		{
+			if (ev->DstAgentID != target) { continue; }
+		}
+		else /* outgoing */
+		{
+			if (ev->SrcAgentID != target) { continue; }
+		}
+
+		if (ev->Value < 0)
+		{
+			s_DisplayedEncounter.TotalDmg += ev->Value;
+		}
+		else if (ev->Value > 0)
+		{
+			s_DisplayedEncounter.TotalHeal += ev->Value;
+		}
+		else if (ev->ValueAlt > 0)
+		{
+			s_DisplayedEncounter.TotalBarrier += ev->ValueAlt;
 		}
 	}
 }
