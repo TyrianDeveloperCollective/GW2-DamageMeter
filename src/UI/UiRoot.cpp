@@ -310,7 +310,7 @@ void UiRoot::CalculateTotals()
 			}
 			else /* specific agent */
 			{
-				if (ev->DstAgentID != s_Target) { continue; }
+				if (ev->SrcAgentID != s_Target) { continue; }
 			}
 		}
 		else /* outgoing */
@@ -322,7 +322,7 @@ void UiRoot::CalculateTotals()
 			}
 			else /* specific agent */
 			{
-				if (ev->SrcAgentID != s_Target) { continue; }
+				if (ev->DstAgentID != s_Target) { continue; }
 			}
 		}
 
