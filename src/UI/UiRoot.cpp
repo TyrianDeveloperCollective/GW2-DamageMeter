@@ -51,6 +51,8 @@ void UiRoot::Create(AddonAPI_t* aApi)
 
 void UiRoot::Destroy()
 {
+	if (!s_APIDefs) { return; }
+
 	s_APIDefs->Events_Unsubscribe(EV_CCCCCCCC_COMBAT, (EVENT_CONSUME)OnCombatEvent);
 	s_APIDefs->Events_Unsubscribe(EV_CCCCCCCC_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 
@@ -70,6 +72,14 @@ void UiRoot::Render()
 	{
 		ImGui::Begin(wndName.c_str());
 		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledInPvP));
+		ImGui::End();
+		return;
+	}
+
+	if (!Combat::IsRegistered())
+	{
+		ImGui::Begin(wndName.c_str());
+		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledCombatTracker));
 		ImGui::End();
 		return;
 	}

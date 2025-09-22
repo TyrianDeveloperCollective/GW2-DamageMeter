@@ -12,6 +12,8 @@ namespace Combat
 
 	void Destroy();
 
+	bool IsRegistered();
+
 	Encounter_t GetCurrentEncounter();
 }
  

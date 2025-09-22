@@ -57,17 +57,32 @@ void Combat::Create(AddonAPI_t* aApi)
 	HookEnable = (FUNC_HOOKENABLE)s_APIDefs->MinHook_Enable;
 	HookDisable = (FUNC_HOOKDISABLE)s_APIDefs->MinHook_Disable;
 
+	FN_COMBATTRACKER cbttracker = GW2RE::S_FnCombatTracker.Scan<FN_COMBATTRACKER>();
+
+	if (!cbttracker)
+	{
+		s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, "Combat tracker not registered.");
+		return;
+	}
+
 	GW2RE::CEventApi::Register(GW2RE::EEvent::EngineTick, Advance);
-	
+
 	s_HookCombatTracker = new GW2RE::Hook<FN_COMBATTRACKER>((FN_COMBATTRACKER)GW2RE::S_FnCombatTracker.Scan(), OnCombatEvent);
 	s_HookCombatTracker->Enable();
 }
 
 void Combat::Destroy()
 {
+	if (!s_APIDefs) { return; }
+
 	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
 
 	if (s_HookCombatTracker) { GW2RE::DestroyHook(s_HookCombatTracker); }
+}
+
+bool Combat::IsRegistered()
+{
+	return s_HookCombatTracker != nullptr;
 }
 
 Encounter_t Combat::GetCurrentEncounter()

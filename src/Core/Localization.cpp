@@ -16,6 +16,9 @@ void Localization::Init(AddonAPI_t* aApi)
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::CombatMetrics), "en", "Combat Metrics");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::CombatMetrics), "de", "Kampfstatistiken");
 
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::DisabledCombatTracker), "en", "Combat Tracker not registered.");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::DisabledCombatTracker), "de", "Kampfprotokoll nicht registriert.");
+
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::DisabledInPvP), "en", "Disabled in PvP.");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::DisabledInPvP), "de", "Im PvP deaktiviert.");
 

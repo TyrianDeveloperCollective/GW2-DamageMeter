@@ -5,6 +5,7 @@
 enum class ETexts
 {
 	CombatMetrics,
+	DisabledCombatTracker,
 	DisabledInPvP,
 	Duration
 };

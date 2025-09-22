@@ -45,6 +45,8 @@ void TextCache::Create(AddonAPI_t* aApi)
 
 void TextCache::Destroy()
 {
+	if (!s_APIDefs) { return; }
+
 	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
 }
 
