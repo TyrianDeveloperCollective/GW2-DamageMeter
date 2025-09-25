@@ -12,8 +12,11 @@
 #include "GW2RE/Game/Agent/Agent.h"
 #include "GW2RE/Game/Char/Character.h"
 #include "GW2RE/Game/Char/ChCliContext.h"
+#include "GW2RE/Game/Char/SpeciesDef.h"
 #include "GW2RE/Game/Combat/SkillDef.h"
 #include "GW2RE/Game/Combat/Tracker/CombatEvent.h"
+#include "GW2RE/Game/Gadget/Gadget.h"
+#include "GW2RE/Game/Gadget/GdAttackTarget.h"
 #include "GW2RE/Game/Game/EventApi.h"
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
@@ -40,6 +43,7 @@ namespace Combat
 	static Encounter_t                               s_CurrentEncounter  = {};
 
 	/* Forward declare internal functions. */
+	void ResolveAgentSpecies(GW2RE::Agent_t* aAgent);
 	uint64_t __fastcall OnCombatEvent(GW2RE::CbtEvent_t*, uint32_t*);
 	void __fastcall Advance(void*, void*);
 }
@@ -93,6 +97,41 @@ bool Combat::IsActive()
 Encounter_t Combat::GetCurrentEncounter()
 {
 	return s_CurrentEncounter;
+}
+
+void Combat::ResolveAgentSpecies(GW2RE::Agent_t* aAgent)
+{
+	if (!aAgent)     { return; }
+	if (!aAgent->ID) { return; }
+
+	auto it = s_CurrentEncounter.AgentSpeciesLUT.find(aAgent->ID);
+
+	if (it == s_CurrentEncounter.AgentSpeciesLUT.end())
+	{
+		GW2RE::CAgent ag = aAgent;
+		switch (ag.GetType())
+		{
+			case GW2RE::EAgentType::Char:
+			{
+				GW2RE::CCharacter character = ag.GetCharacter();
+				s_CurrentEncounter.AgentSpeciesLUT.emplace(aAgent->ID, character->SpeciesDef->ID);
+				break;
+			}
+			case GW2RE::EAgentType::Gadget:
+			{
+				GW2RE::CGadget gadget = ag.GetGadget();
+				s_CurrentEncounter.AgentSpeciesLUT.emplace(aAgent->ID, gadget.GetArcID());
+				break;
+			}
+			case GW2RE::EAgentType::Gadget_Attack_Target:
+			{
+				GW2RE::CGadgetAttackTarget at = ag.GetGadgetAttackTarget();
+				GW2RE::CGadget owner = at.GetOwner();
+				s_CurrentEncounter.AgentSpeciesLUT.emplace(aAgent->ID, owner.GetArcID());
+				break;
+			}
+		}
+	}
 }
 
 uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint32_t* a2)
@@ -179,6 +218,10 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 
 	s_CurrentEncounter.TimeEnd = now;
 
+	/* Store agent species. */
+	ResolveAgentSpecies(aCbtEv->SrcAgent);
+	ResolveAgentSpecies(aCbtEv->DstAgent);
+
 	/* Store combat event. */
 	s_CurrentEncounter.CombatEvents.push_back(ev);
 
@@ -188,7 +231,7 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 
 	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_PCM_COMBAT);
 	
-#ifdef _DEBUG
+//#ifdef _DEBUG
 	s_APIDefs->Log(
 		LOGL_DEBUG,
 		ADDON_NAME,
@@ -201,7 +244,7 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 			ev->ValueAlt
 		).c_str()
 	);
-#endif
+//#endif
 
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }

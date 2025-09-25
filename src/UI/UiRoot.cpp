@@ -11,6 +11,7 @@
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
 #include "GW2RE/Game/PropContext.h"
+#include "Targets.h"
 #include "Util/src/Strings.h"
 
 namespace UiRoot
@@ -32,13 +33,12 @@ namespace UiRoot
 		Stats_t               Cleave    = {};
 	};
 
-	static AddonAPI_t*           s_APIDefs = nullptr;
+	static AddonAPI_t*        s_APIDefs = nullptr;
 	
-	static std::mutex            s_Mutex;
-	static DisplayEncounter_t    s_DisplayedEncounter;
+	static std::mutex         s_Mutex;
+	static DisplayEncounter_t s_DisplayedEncounter;
 
-	static bool                  s_Incoming = false;
-	static uint32_t              s_Target   = 0;
+	static bool               s_Incoming = false;
 
 	void OnCombatEvent();
 	void CalculateTotals();
@@ -222,48 +222,52 @@ void UiRoot::OnCombatEvent()
 
 void UiRoot::CalculateTotals()
 {
-	s_DisplayedEncounter.Cleave.Damage = 0;
-	s_DisplayedEncounter.Cleave.Heal = 0;
-	s_DisplayedEncounter.Cleave.Barrier = 0;
+	s_DisplayedEncounter.Cleave = {};
+	s_DisplayedEncounter.Target = {};
 
 	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
 	{
 		if (s_Incoming)
 		{
-			if (s_Target == 0) /* self */
-			{
-				/* if not self, skip */
-				if (ev->DstAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
-			}
-			else /* specific agent */
-			{
-				if (ev->SrcAgentID != s_Target) { continue; }
-			}
+			if (ev->DstAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
 		}
 		else /* outgoing */
 		{
-			if (s_Target == 0) /* self */
-			{
-				/* if not self, skip */
-				if (ev->SrcAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
-			}
-			else /* specific agent */
-			{
-				if (ev->DstAgentID != s_Target) { continue; }
-			}
+			if (ev->SrcAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
 		}
+
+		uint32_t id = s_Incoming ? ev->SrcAgentID : ev->DstAgentID;
+		uint32_t species = s_DisplayedEncounter.Encounter.AgentSpeciesLUT.at(id);
+
+		bool isPrimary = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), species) != s_PrimaryTargets.end();
+		bool isSecondary = std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), species) != s_SecondaryTargets.end();
 
 		if (ev->Value < 0)
 		{
 			s_DisplayedEncounter.Cleave.Damage += ev->Value;
+
+			if (isPrimary || isSecondary)
+			{
+				s_DisplayedEncounter.Target.Damage += ev->Value;
+			}
 		}
 		else if (ev->Value > 0)
 		{
 			s_DisplayedEncounter.Cleave.Heal += ev->Value;
+
+			if (isPrimary || isSecondary)
+			{
+				s_DisplayedEncounter.Target.Heal += ev->Value;
+			}
 		}
 		else if (ev->ValueAlt > 0)
 		{
 			s_DisplayedEncounter.Cleave.Barrier += ev->ValueAlt;
+
+			if (isPrimary || isSecondary)
+			{
+				s_DisplayedEncounter.Target.Barrier += ev->ValueAlt;
+			}
 		}
 	}
 }

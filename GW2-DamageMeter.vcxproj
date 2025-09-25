@@ -213,6 +213,7 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\GW2RE\Game\Agent\EAgType.h" />
     <ClInclude Include="src\GW2RE\Game\Char\Character.h" />
     <ClInclude Include="src\GW2RE\Game\Char\ChCliContext.h" />
+    <ClInclude Include="src\GW2RE\Game\Char\SpeciesDef.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\SkillDef.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\Tracker\ECbtEventType.h" />

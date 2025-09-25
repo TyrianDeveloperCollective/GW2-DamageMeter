@@ -15,5 +15,6 @@ struct Encounter_t
 	uint32_t                                  SelfID       = 0;
 
 	std::unordered_map<uint32_t, std::string> AgentNameLUT;
+	std::unordered_map<uint32_t, uint32_t>    AgentSpeciesLUT;
 	std::vector<CombatEvent_t*>               CombatEvents;
 };
