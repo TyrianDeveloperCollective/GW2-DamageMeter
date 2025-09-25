@@ -135,7 +135,9 @@
       <EnableUAC>false</EnableUAC>
     </Link>
     <PreBuildEvent>
-      <Command>CALL Scripts\branch.bat
+      <Command>powershell -ExecutionPolicy Bypass -File "GenerateTargets.ps1"
+
+CALL Scripts\branch.bat
 CALL Scripts\commithash.bat
 CALL Scripts\remoteurl.bat
 CALL Scripts\version.bat</Command>
@@ -166,7 +168,9 @@ CALL Scripts\version.bat</Command>
       <EnableUAC>false</EnableUAC>
     </Link>
     <PreBuildEvent>
-      <Command>CALL Scripts\branch.bat
+      <Command>powershell -ExecutionPolicy Bypass -File "GenerateTargets.ps1"
+
+CALL Scripts\branch.bat
 CALL Scripts\commithash.bat
 CALL Scripts\remoteurl.bat
 CALL Scripts\version.bat</Command>
@@ -200,6 +204,7 @@ CALL Scripts\version.bat</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Addon.h" />
+    <ClInclude Include="src\Core\BossTargets.h" />
     <ClInclude Include="src\Core\Combat\CbtEvent.h" />
     <ClInclude Include="src\Core\Combat\Combat.h" />
     <ClInclude Include="src\Core\Combat\CbtEncounter.h" />
@@ -236,6 +241,9 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\UI\UiRoot.h" />
     <ClInclude Include="src\Util\src\Strings.h" />
     <ClInclude Include="src\Util\src\Time.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GenerateTargets.ps1" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -200,5 +200,11 @@
     <ClInclude Include="src\Core\Localization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="src\Core\BossTargets.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="GenerateTargets.ps1" />
   </ItemGroup>
 </Project>
