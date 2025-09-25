@@ -2,8 +2,8 @@
 
 #include "Nexus/Nexus.h"
 
-#define ADDON_SIG   0xCCCCCCCC
-#define ADDON_NAME "Damage Meter"
+#define ADDON_SIG   0x4D455452
+#define ADDON_NAME "Personal Combat Metrics"
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef();
 

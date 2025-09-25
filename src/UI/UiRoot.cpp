@@ -50,16 +50,16 @@ void UiRoot::Create(AddonAPI_t* aApi)
 	s_APIDefs->GUI_Register(RT_Render, UiRoot::Render);
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
 
-	s_APIDefs->Events_Subscribe(EV_CCCCCCCC_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-	s_APIDefs->Events_Subscribe(EV_CCCCCCCC_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Subscribe(EV_PCM_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Subscribe(EV_PCM_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 }
 
 void UiRoot::Destroy()
 {
 	if (!s_APIDefs) { return; }
 
-	s_APIDefs->Events_Unsubscribe(EV_CCCCCCCC_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-	s_APIDefs->Events_Unsubscribe(EV_CCCCCCCC_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Unsubscribe(EV_PCM_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Unsubscribe(EV_PCM_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 
 	s_APIDefs->GUI_Deregister(UiRoot::Render);
 	s_APIDefs->GUI_Deregister(UiRoot::Options);

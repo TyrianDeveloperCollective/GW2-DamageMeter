@@ -186,7 +186,7 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	std::string dstName = TextCache::GetAgentName(aCbtEv->DstAgent);
 	std::string skillName = TextCache::GetSkillName(aCbtEv->SkillDef);
 
-	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CCCCCCCC_COMBAT);
+	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_PCM_COMBAT);
 	
 #ifdef _DEBUG
 	s_APIDefs->Log(
@@ -221,6 +221,6 @@ void __fastcall Combat::Advance(void*, void*)
 		s_IsInCombat = false;
 		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Left combat.");
 		s_CurrentEncounter.AgentNameLUT = TextCache::GetAgentNames();
-		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CCCCCCCC_COMBAT_END);
+		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_PCM_COMBAT_END);
 	}
 }
