@@ -14,7 +14,9 @@ enum class ETexts
 	Heal,
 	NoTargets,
 	Incoming,
-	Outgoing
+	Outgoing,
+	Target,
+	Total
 };
 
 namespace Localization

@@ -45,6 +45,12 @@ void Localization::Init(AddonAPI_t* aApi)
 
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Outgoing), "en", "Outgoing");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Outgoing), "de", "Verteilt");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Target), "en", "Target");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Target), "de", "Ziel");
+
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Total), "en", "Total");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Total), "de", "Gesamt");
 }
 
 const char* Translate(ETexts aID)

@@ -15,15 +15,21 @@
 
 namespace UiRoot
 {
+	struct Stats_t
+	{
+		float Damage  = 0.f;
+		float Heal    = 0.f;
+		float Barrier = 0.f;
+	};
+
 	struct DisplayEncounter_t
 	{
-		Encounter_t           Encounter    = {};
+		Encounter_t           Encounter = {};
 		std::vector<uint32_t> Skills;
 		std::vector<uint32_t> Agents;
 
-		float                 TotalDmg     = 0.f;
-		float                 TotalHeal    = 0.f;
-		float                 TotalBarrier = 0.f;
+		Stats_t               Target    = {};
+		Stats_t               Cleave    = {};
 	};
 
 	static AddonAPI_t*           s_APIDefs = nullptr;
@@ -90,11 +96,6 @@ void UiRoot::Render()
 
 	ImGuiWindowFlags wndFlags = ImGuiWindowFlags_AlwaysAutoResize;
 
-	static float s_WndHeight = 150.f;
-	float wndHeight = .0f;
-
-	ImGui::SetNextWindowSize(ImVec2(.0f, s_WndHeight));
-
 	if (missionctx && missionctx->CurrentMap && missionctx->CurrentMap->PvP)
 	{
 		ImGui::Begin(wndName.c_str(), 0, wndFlags);
@@ -121,134 +122,60 @@ void UiRoot::Render()
 		}
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
 
-		/*float ms = (cbtDurationMs % 1000) / 1000.f;
-		uint64_t s = (cbtDurationMs / 1000) % 60;
-		uint64_t m = (cbtDurationMs / 1000) / 60;
-
-		if (m > 0)
-		{
-			ImGui::Text("%s: %llum%.2fs", Translate(ETexts::Duration), m, s + ms);
-		}
-		else
-		{
-			ImGui::Text("%s: %.2fs", Translate(ETexts::Duration), s + ms);
-		}*/
-
 		ImGui::Separator();
 
-		static float s_TextWidth = 50.f;
-		float textWidth = .0f;
-		float agentSelectorWidth = s_TextWidth + ((ImGui::GetStyle().FramePadding.x + ImGui::GetStyle().WindowPadding.x) * 2);
-		if (ImGui::BeginChild("Agents", ImVec2(agentSelectorWidth, .0f), false))
+		if (ImGui::BeginTable("Data", 3))
 		{
-			if (s_DisplayedEncounter.Agents.size() == 0)
-			{
-				ImGui::TextDisabled(Translate(ETexts::NoTargets));
-				textWidth = max(textWidth, ImGui::CalcTextSize(Translate(ETexts::NoTargets)).x);
-			}
-			else
-			{
-				if (ImGui::Selectable(Translate(ETexts::Cleave), s_Target == 0))
-				{
-					s_Target = 0;
-					CalculateTotals();
-				}
-				textWidth = max(textWidth, ImGui::CalcTextSize(Translate(ETexts::Cleave)).x);
-			}
+			/* Headers row. */
+			ImGui::TableHeadersRow();
+			/* Column 0 has no label. */
 
-			for (uint32_t id : s_DisplayedEncounter.Agents)
-			{
-				if (id == s_DisplayedEncounter.Encounter.SelfID)
-				{
-					continue;
-				}
-				else if (id == 0)
-				{
-					continue;
-				}
-				else
-				{
-					std::string btnId = TextCache::GetAgentName(id);
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text(Translate(ETexts::Target));
 
-					textWidth = max(textWidth, ImGui::CalcTextSize(btnId.c_str()).x);
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text(Translate(ETexts::Cleave));
 
-					btnId.append("###");
-					btnId.append(std::to_string(id));
+			/* Damage row. */
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(Translate(ETexts::Damage));
 
-					if (ImGui::Selectable(btnId.c_str(), s_Target == id))
-					{
-						if (s_Target != id)
-						{
-							s_Target = id;
-						}
-						else
-						{
-							s_Target = 0;
-						}
-						CalculateTotals();
-					}
-				}
-			}
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Damage) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Target.Damage));
 
-			s_TextWidth = textWidth;
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Damage) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Cleave.Damage));
+
+			/* Heal row. */
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(Translate(ETexts::Heal));
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Heal) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Target.Heal));
+
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Heal) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Cleave.Heal));
+
+			/* Barrier row. */
+			ImGui::TableNextRow();
+			ImGui::TableSetColumnIndex(0);
+			ImGui::Text(Translate(ETexts::Barrier));
+
+			ImGui::TableSetColumnIndex(1);
+			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Barrier) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Target.Barrier));
+
+			ImGui::TableSetColumnIndex(2);
+			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Barrier) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
+			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Cleave.Barrier));
 		}
-		ImGui::EndChild();
-
-		ImGui::SameLine();
-
-		ImGui::BeginGroup();
-		{
-			if (ImGui::BeginTable("Data", 3))
-			{
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Text(Translate(ETexts::Damage));
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalDmg));
-
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text(String::FormatNumberDenominated(abs(s_DisplayedEncounter.TotalDmg)).c_str());
-				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalDmg));
-
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Text(Translate(ETexts::Heal));
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalHeal));
-
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text(String::FormatNumberDenominated(s_DisplayedEncounter.TotalHeal).c_str());
-				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalHeal));
-
-				ImGui::TableNextRow();
-				ImGui::TableSetColumnIndex(0);
-				ImGui::Text(Translate(ETexts::Barrier));
-
-				ImGui::TableSetColumnIndex(1);
-				ImGui::Text("%s/s", String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalBarrier));
-
-				ImGui::TableSetColumnIndex(2);
-				ImGui::Text(String::FormatNumberDenominated(s_DisplayedEncounter.TotalBarrier).c_str());
-				TooltipGeneric("%.0f", abs(s_DisplayedEncounter.TotalBarrier));
-			}
-			ImGui::EndTable();
-		}
-		ImGui::EndGroup();
-		wndHeight = max(wndHeight, ImGui::GetCursorPosY());
-		s_WndHeight = ceilf(wndHeight) + 1.f;
-
-		//ImGui::Separator();
-
-		//ImGui::TextDisabled("Skills");
-		//for (uint32_t id : s_DisplayedEncounter.Skills)
-		//{
-		//	ImGui::Text(TextCache::GetSkillName(id).c_str());
-		//}
+		ImGui::EndTable();
 	}
 	ImGui::End();
 }
@@ -295,9 +222,9 @@ void UiRoot::OnCombatEvent()
 
 void UiRoot::CalculateTotals()
 {
-	s_DisplayedEncounter.TotalDmg = 0;
-	s_DisplayedEncounter.TotalHeal = 0;
-	s_DisplayedEncounter.TotalBarrier = 0;
+	s_DisplayedEncounter.Cleave.Damage = 0;
+	s_DisplayedEncounter.Cleave.Heal = 0;
+	s_DisplayedEncounter.Cleave.Barrier = 0;
 
 	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
 	{
@@ -328,15 +255,15 @@ void UiRoot::CalculateTotals()
 
 		if (ev->Value < 0)
 		{
-			s_DisplayedEncounter.TotalDmg += ev->Value;
+			s_DisplayedEncounter.Cleave.Damage += ev->Value;
 		}
 		else if (ev->Value > 0)
 		{
-			s_DisplayedEncounter.TotalHeal += ev->Value;
+			s_DisplayedEncounter.Cleave.Heal += ev->Value;
 		}
 		else if (ev->ValueAlt > 0)
 		{
-			s_DisplayedEncounter.TotalBarrier += ev->ValueAlt;
+			s_DisplayedEncounter.Cleave.Barrier += ev->ValueAlt;
 		}
 	}
 }
