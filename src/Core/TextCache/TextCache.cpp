@@ -40,14 +40,14 @@ void TextCache::Create(AddonAPI_t* aApi)
 	s_ResolveHash = GW2RE::S_ResolveTextHash.Scan<FN_RESOLVEHASH>();
 	s_DecodeText = GW2RE::S_DecodeText.Scan<FN_DECODETEXT>();
 
-	GW2RE::CEventApi::Register(GW2RE::EEvent::EngineTick, Advance);
+	GW2RE::CEventApi::Register(GW2RE::EEngineEvent::EngineTick, Advance);
 }
 
 void TextCache::Destroy()
 {
 	if (!s_APIDefs) { return; }
 
-	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
+	GW2RE::CEventApi::Deregister(GW2RE::EEngineEvent::EngineTick, Advance);
 }
 
 void TextCache::Advance(void*, void*)

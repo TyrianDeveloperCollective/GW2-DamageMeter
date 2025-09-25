@@ -200,7 +200,7 @@
     <ClInclude Include="src\Core\Localization.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="src\Core\BossTargets.h">
+    <ClInclude Include="src\Targets.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

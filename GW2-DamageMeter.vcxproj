@@ -204,7 +204,6 @@ CALL Scripts\version.bat</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Addon.h" />
-    <ClInclude Include="src\Core\BossTargets.h" />
     <ClInclude Include="src\Core\Combat\CbtEvent.h" />
     <ClInclude Include="src\Core\Combat\Combat.h" />
     <ClInclude Include="src\Core\Combat\CbtEncounter.h" />
@@ -233,6 +232,7 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\GW2RE\Util\Offset.h" />
     <ClInclude Include="src\GW2RE\Util\Validation.h" />
     <ClInclude Include="src\GW2RE\Util\WrapperClass.h" />
+    <ClInclude Include="src\Targets.h" />
     <ClInclude Include="src\thirdparty\imgui\imgui.h" />
     <ClInclude Include="src\thirdparty\imgui\imgui_internal.h" />
     <ClInclude Include="src\thirdparty\imgui\imstb_rectpack.h" />

@@ -65,7 +65,7 @@ void Combat::Create(AddonAPI_t* aApi)
 		return;
 	}
 
-	GW2RE::CEventApi::Register(GW2RE::EEvent::EngineTick, Advance);
+	GW2RE::CEventApi::Register(GW2RE::EEngineEvent::EngineTick, Advance);
 
 	s_HookCombatTracker = new GW2RE::Hook<FN_COMBATTRACKER>((FN_COMBATTRACKER)GW2RE::S_FnCombatTracker.Scan(), OnCombatEvent);
 	s_HookCombatTracker->Enable();
@@ -75,7 +75,7 @@ void Combat::Destroy()
 {
 	if (!s_APIDefs) { return; }
 
-	GW2RE::CEventApi::Deregister(GW2RE::EEvent::EngineTick, Advance);
+	GW2RE::CEventApi::Deregister(GW2RE::EEngineEvent::EngineTick, Advance);
 
 	if (s_HookCombatTracker) { GW2RE::DestroyHook(s_HookCombatTracker); }
 }
