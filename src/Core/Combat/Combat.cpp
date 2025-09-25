@@ -231,7 +231,7 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 
 	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_PCM_COMBAT);
 	
-//#ifdef _DEBUG
+#ifdef _DEBUG
 	s_APIDefs->Log(
 		LOGL_DEBUG,
 		ADDON_NAME,
@@ -244,7 +244,7 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 			ev->ValueAlt
 		).c_str()
 	);
-//#endif
+#endif
 
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }

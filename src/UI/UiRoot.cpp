@@ -126,15 +126,10 @@ void UiRoot::Render()
 
 		if (ImGui::BeginTable("Data", 3))
 		{
-			/* Headers row. */
+			ImGui::TableSetupColumn("###NULL", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn((std::string(Translate(ETexts::Target)) + "###Target").c_str(), ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn((std::string(Translate(ETexts::Cleave)) + "###Cleave").c_str(), ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableHeadersRow();
-			/* Column 0 has no label. */
-
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text(Translate(ETexts::Target));
-
-			ImGui::TableSetColumnIndex(2);
-			ImGui::Text(Translate(ETexts::Cleave));
 
 			/* Damage row. */
 			ImGui::TableNextRow();
