@@ -120,52 +120,94 @@ void UiRoot::Render()
 	{
 		const std::lock_guard<std::mutex> lock(s_Mutex);
 		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
+		float cbtDuration = max(cbtDurationMs, 1000) / 1000.f;
+
+		std::string durationStr;
+
+		if (cbtDurationMs > 60000)
+		{
+			durationStr = String::Format("%um%.2fs", cbtDurationMs / 1000 / 60, cbtDuration);
+		}
+		else
+		{
+			durationStr = String::Format("%.2fs", cbtDuration);
+		}
 
 		if (ImGui::BeginTable("Data", 3))
 		{
-			ImGui::TableSetupColumn("###NULL", ImGuiTableColumnFlags_WidthStretch);
-			ImGui::TableSetupColumn((std::string(Translate(ETexts::Target)) + "###Target").c_str(), ImGuiTableColumnFlags_WidthStretch);
-			ImGui::TableSetupColumn((std::string(Translate(ETexts::Cleave)) + "###Cleave").c_str(), ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn("##NULL", ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn((std::string(Translate(ETexts::Target)) + "##Target").c_str(), ImGuiTableColumnFlags_WidthStretch);
+			ImGui::TableSetupColumn((std::string(Translate(ETexts::Cleave)) + "##Cleave").c_str(), ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableHeadersRow();
 
 			/* Damage row. */
 			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::Text(Translate(ETexts::Damage));
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled(Translate(ETexts::Damage));
 
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Damage) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Target.Damage));
+			/* DPS Target */
+			ImGui::TableNextColumn();
+			std::string dpsTarget = s_DisplayedEncounter.Target.Damage < 0.f
+				? String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Damage) / cbtDuration) + "/s"
+				: "-/s";
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsTarget.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::Text(dpsTarget.c_str());
+			TooltipGeneric("%.0f, %s", abs(s_DisplayedEncounter.Target.Damage), durationStr.c_str());
 
-			ImGui::TableSetColumnIndex(2);
-			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Damage) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Cleave.Damage));
+			/* DPS Cleave */
+			ImGui::TableNextColumn();
+			std::string dpsCleave = s_DisplayedEncounter.Cleave.Damage < 0.f
+				? String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Damage) / cbtDuration) + "/s"
+				: "-/s";
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsCleave.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::Text(dpsCleave.c_str());
+			TooltipGeneric("%.0f, %s", abs(s_DisplayedEncounter.Cleave.Damage), durationStr.c_str());
 
 			/* Heal row. */
 			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::Text(Translate(ETexts::Heal));
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled(Translate(ETexts::Heal));
 
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Heal) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Target.Heal));
+			/* Heal Target */
+			ImGui::TableNextColumn();
+			std::string hpsTarget = s_DisplayedEncounter.Target.Heal > 0.f
+				? String::FormatNumberDenominated(s_DisplayedEncounter.Target.Heal / cbtDuration) + "/s"
+				: "-/s";
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsTarget.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::Text(hpsTarget.c_str());
+			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Target.Heal, durationStr.c_str());
 
-			ImGui::TableSetColumnIndex(2);
-			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Heal) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Cleave.Heal));
+			/* Heal Cleave */
+			ImGui::TableNextColumn();
+			std::string hpsCleave = s_DisplayedEncounter.Cleave.Heal > 0.f
+				? String::FormatNumberDenominated(s_DisplayedEncounter.Cleave.Heal / cbtDuration) + "/s"
+				: "-/s";
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsCleave.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::Text(hpsCleave.c_str());
+			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Cleave.Heal, durationStr.c_str());
 
 			/* Barrier row. */
 			ImGui::TableNextRow();
-			ImGui::TableSetColumnIndex(0);
-			ImGui::Text(Translate(ETexts::Barrier));
+			ImGui::TableNextColumn();
+			ImGui::TextDisabled(Translate(ETexts::Barrier));
 
-			ImGui::TableSetColumnIndex(1);
-			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Barrier) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Target.Barrier));
+			/* Barrier Target */
+			ImGui::TableNextColumn();
+			std::string bpsTarget = s_DisplayedEncounter.Target.Barrier > 0.f
+				? String::FormatNumberDenominated(s_DisplayedEncounter.Target.Barrier / cbtDuration) + "/s"
+				: "-/s";
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsTarget.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::Text(bpsTarget.c_str());
+			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Target.Barrier, durationStr.c_str());
 
-			ImGui::TableSetColumnIndex(2);
-			ImGui::Text("%s/s", String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Barrier) / (max(cbtDurationMs, 1000) / 1000.f)).c_str());
-			TooltipGeneric("%.0f", abs(s_DisplayedEncounter.Cleave.Barrier));
+			/* Barrier Cleave*/
+			ImGui::TableNextColumn();
+			std::string bpsCleave = s_DisplayedEncounter.Cleave.Barrier > 0.f
+				? String::FormatNumberDenominated(s_DisplayedEncounter.Cleave.Barrier / cbtDuration) + "/s"
+				: "-/s";
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsCleave.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::Text(bpsCleave.c_str());
+			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Cleave.Barrier, durationStr.c_str());
 		}
 		ImGui::EndTable();
 	}

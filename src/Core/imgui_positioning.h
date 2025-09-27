@@ -1,5 +1,5 @@
 ///----------------------------------------------------------------------------------------------------
-/// Copyright (c) Kevin Bieniek - Licensed under the MIT license.
+/// Copyright (c) RaidcoreGG - Licensed under the MIT license.
 ///
 /// Name         :  imgui_positioning.h
 /// Description  :  Positioning extension for ImGui.
@@ -9,6 +9,7 @@
 
 #include <assert.h>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include <imgui/imgui.h>
