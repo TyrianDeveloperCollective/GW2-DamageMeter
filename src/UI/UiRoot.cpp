@@ -126,7 +126,7 @@ void UiRoot::Render()
 
 		if (cbtDurationMs > 60000)
 		{
-			durationStr = String::Format("%um%.2fs", cbtDurationMs / 1000 / 60, cbtDuration);
+			durationStr = String::Format("%um%.2fs", cbtDurationMs / 1000 / 60, fmod(cbtDuration, 60.f));
 		}
 		else
 		{
