@@ -65,13 +65,22 @@ void Combat::Create(AddonAPI_t* aApi)
 
 	if (!cbttracker)
 	{
-		s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, "Combat tracker not registered.");
-		return;
+		cbttracker = GW2RE::S_FnCombatTracker_Callsite.Scan<FN_COMBATTRACKER>();
+
+		if (!cbttracker)
+		{
+			s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, "Combat tracker not registered.");
+			return;
+		}
+		else
+		{
+			s_APIDefs->Log(LOGL_INFO, ADDON_NAME, "Combat tracker registered through secondary entry point.");
+		}
 	}
 
 	GW2RE::CEventApi::Register(GW2RE::EEngineEvent::EngineTick, Advance);
 
-	s_HookCombatTracker = new GW2RE::Hook<FN_COMBATTRACKER>((FN_COMBATTRACKER)GW2RE::S_FnCombatTracker.Scan(), OnCombatEvent);
+	s_HookCombatTracker = new GW2RE::Hook<FN_COMBATTRACKER>(cbttracker, OnCombatEvent);
 	s_HookCombatTracker->Enable();
 }
 
