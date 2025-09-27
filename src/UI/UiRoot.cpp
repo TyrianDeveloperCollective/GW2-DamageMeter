@@ -139,6 +139,7 @@ void UiRoot::Render()
 			ImGui::TableSetupColumn((std::string(Translate(ETexts::Target)) + "##Target").c_str(), ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableSetupColumn((std::string(Translate(ETexts::Cleave)) + "##Cleave").c_str(), ImGuiTableColumnFlags_WidthStretch);
 			ImGui::TableHeadersRow();
+			/* TODO: Configurable headers. */
 
 			/* Damage row. */
 			ImGui::TableNextRow();
@@ -150,7 +151,7 @@ void UiRoot::Render()
 			std::string dpsTarget = s_DisplayedEncounter.Target.Damage < 0.f
 				? String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Damage) / cbtDuration) + "/s"
 				: "-/s";
-			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsTarget.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsTarget.c_str()).x);
 			ImGui::Text(dpsTarget.c_str());
 			TooltipGeneric("%.0f, %s", abs(s_DisplayedEncounter.Target.Damage), durationStr.c_str());
 
@@ -159,7 +160,7 @@ void UiRoot::Render()
 			std::string dpsCleave = s_DisplayedEncounter.Cleave.Damage < 0.f
 				? String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Damage) / cbtDuration) + "/s"
 				: "-/s";
-			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsCleave.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsCleave.c_str()).x);
 			ImGui::Text(dpsCleave.c_str());
 			TooltipGeneric("%.0f, %s", abs(s_DisplayedEncounter.Cleave.Damage), durationStr.c_str());
 
@@ -173,7 +174,7 @@ void UiRoot::Render()
 			std::string hpsTarget = s_DisplayedEncounter.Target.Heal > 0.f
 				? String::FormatNumberDenominated(s_DisplayedEncounter.Target.Heal / cbtDuration) + "/s"
 				: "-/s";
-			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsTarget.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsTarget.c_str()).x);
 			ImGui::Text(hpsTarget.c_str());
 			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Target.Heal, durationStr.c_str());
 
@@ -182,7 +183,7 @@ void UiRoot::Render()
 			std::string hpsCleave = s_DisplayedEncounter.Cleave.Heal > 0.f
 				? String::FormatNumberDenominated(s_DisplayedEncounter.Cleave.Heal / cbtDuration) + "/s"
 				: "-/s";
-			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsCleave.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsCleave.c_str()).x);
 			ImGui::Text(hpsCleave.c_str());
 			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Cleave.Heal, durationStr.c_str());
 
@@ -196,7 +197,7 @@ void UiRoot::Render()
 			std::string bpsTarget = s_DisplayedEncounter.Target.Barrier > 0.f
 				? String::FormatNumberDenominated(s_DisplayedEncounter.Target.Barrier / cbtDuration) + "/s"
 				: "-/s";
-			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsTarget.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsTarget.c_str()).x);
 			ImGui::Text(bpsTarget.c_str());
 			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Target.Barrier, durationStr.c_str());
 
@@ -205,7 +206,7 @@ void UiRoot::Render()
 			std::string bpsCleave = s_DisplayedEncounter.Cleave.Barrier > 0.f
 				? String::FormatNumberDenominated(s_DisplayedEncounter.Cleave.Barrier / cbtDuration) + "/s"
 				: "-/s";
-			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsCleave.c_str()).x - ImGui::GetStyle().CellPadding.x);
+			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsCleave.c_str()).x);
 			ImGui::Text(bpsCleave.c_str());
 			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Cleave.Barrier, durationStr.c_str());
 		}
