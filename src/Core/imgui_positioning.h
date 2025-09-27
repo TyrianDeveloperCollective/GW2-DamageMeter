@@ -140,7 +140,7 @@ namespace ImGuiExt
 	static std::string IniFilename()
 	{
 		assert(ImGui::GetIO().IniFilename);
-		return ImGui::GetIO().IniFilename + std::string(".extpos");
+		return ImGui::GetIO().IniFilename + std::string(".ext");
 	}
 
 	///----------------------------------------------------------------------------------------------------
