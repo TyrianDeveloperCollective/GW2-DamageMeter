@@ -394,6 +394,8 @@ namespace ImGuiExt
 
 						ImGuiWindow* targetWindow = ImGui::FindWindowByID(position->TargetID);
 
+						ImGuiID hoveredID = 0;
+
 						if (ImGui::BeginCombo("Target Window", targetWindow ? targetWindow->Name : "(null)"))
 						{
 							for (ImGuiWindow* wnd : targetWindows)
@@ -402,6 +404,10 @@ namespace ImGuiExt
 								{
 									position->TargetID = wnd->ID;
 									position->ShouldSave = true;
+								}
+								if (ImGui::IsItemHovered())
+								{
+									hoveredID = wnd->ID;
 								}
 							}
 							ImGui::EndCombo();
@@ -427,7 +433,9 @@ namespace ImGuiExt
 							{
 								ImVec2 nameSz = ImGui::CalcTextSize(wnd->Name);
 
-								ImColor highlight = wnd->ID == position->TargetID ? ImColor(1.f, 0.f, 0.f, 1.f) : ImColor(1.f, 1.f, 0.f, 1.f);
+								ImColor highlight = wnd->ID == position->TargetID || wnd->ID == hoveredID
+									? ImColor(1.f, 0.f, 0.f, 1.f)
+									: ImColor(1.f, 1.f, 0.f, 1.f);
 
 								/* Draw background for label. */
 								dl->AddRectFilled(ImVec2(wnd->Pos.x, wnd->Pos.y), ImVec2(wnd->Pos.x + nameSz.x + 2.f, wnd->Pos.y + nameSz.y + 2.f), ImColor(0.f, 0.f, 0.f, 1.f));
