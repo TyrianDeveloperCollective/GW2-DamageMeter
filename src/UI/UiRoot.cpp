@@ -5,6 +5,7 @@
 
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
+#include "ImPos/imgui_positioning.h"
 
 #include "Core/Combat/Combat.h"
 #include "Core/Localization.h"
@@ -14,7 +15,6 @@
 #include "GW2RE/Game/PropContext.h"
 #include "Targets.h"
 #include "Util/src/Strings.h"
-#include "Core/imgui_positioning.h"
 
 namespace UiRoot
 {

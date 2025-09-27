@@ -13,3 +13,6 @@
 [submodule "src/Util"]
 	path = src/Util
 	url = https://github.com/RaidcoreGG/RCGG-Utils
+[submodule "src/thirdparty/ImPos"]
+	path = src/thirdparty/ImPos
+	url = https://github.com/RaidcoreGG/imgui_positioning
