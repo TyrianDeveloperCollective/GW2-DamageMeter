@@ -207,6 +207,7 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\Core\Combat\CbtEvent.h" />
     <ClInclude Include="src\Core\Combat\Combat.h" />
     <ClInclude Include="src\Core\Combat\CbtEncounter.h" />
+    <ClInclude Include="src\Core\imgui_positioning.h" />
     <ClInclude Include="src\Core\Localization.h" />
     <ClInclude Include="src\Core\TextCache\TextCache.h" />
     <ClInclude Include="src\GW2RE\Game\Agent\Agent.h" />
