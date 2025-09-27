@@ -34,7 +34,7 @@ void Localization::Init(AddonAPI_t* aApi)
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Duration), "en", "Duration");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Duration), "de", "Dauer");
 
-	s_APIDefs->Localization_Set(LANG_ID(ETexts::Heal), "en", "Heal");
+	s_APIDefs->Localization_Set(LANG_ID(ETexts::Heal), "en", "Healing");
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::Heal), "de", "Heilung");
 
 	s_APIDefs->Localization_Set(LANG_ID(ETexts::NoTargets), "en", "No targets.");
