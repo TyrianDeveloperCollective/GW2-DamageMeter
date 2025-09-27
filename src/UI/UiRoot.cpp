@@ -309,7 +309,10 @@ void ContextMenuPosition(Positioning_t& aPosition, std::string aContextMenuName)
 					{
 						for (ImGuiWindow* wnd : targetWindows)
 						{
-							if (ImGui::Selectable(wnd->Name))
+							char buffID[32];
+							sprintf_s(buffID, sizeof(buffID), "%04x", wnd->ID);
+
+							if (ImGui::Selectable(buffID))
 							{
 								position.TargetID = wnd->ID;
 							}
@@ -342,8 +345,11 @@ void ContextMenuPosition(Positioning_t& aPosition, std::string aContextMenuName)
 							/* Draw outline for window. */
 							dl->AddRect(ImVec2(wnd->Pos.x, wnd->Pos.y), ImVec2(wnd->Pos.x + wnd->Size.x, wnd->Pos.y + wnd->Size.y), highlight);
 
+							char buffID[32];
+							sprintf_s(buffID, sizeof(buffID), "%04x", wnd->ID);
+
 							/* Draw label text. */
-							dl->AddText(ImVec2(wnd->Pos.x + 1.f, wnd->Pos.y + 1.f), highlight, wnd->Name);
+							dl->AddText(ImVec2(wnd->Pos.x + 1.f, wnd->Pos.y + 1.f), highlight, buffID);
 
 							if (wnd->ID == position.TargetID)
 							{
