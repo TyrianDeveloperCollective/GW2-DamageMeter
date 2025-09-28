@@ -58,16 +58,16 @@ void UiRoot::Create(AddonAPI_t* aApi)
 	s_APIDefs->GUI_Register(RT_Render, UiRoot::Render);
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
 
-	s_APIDefs->Events_Subscribe(EV_PCM_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-	s_APIDefs->Events_Subscribe(EV_PCM_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Subscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Subscribe(EV_CMX_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 }
 
 void UiRoot::Destroy()
 {
 	if (!s_APIDefs) { return; }
 
-	s_APIDefs->Events_Unsubscribe(EV_PCM_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-	s_APIDefs->Events_Unsubscribe(EV_PCM_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Unsubscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Unsubscribe(EV_CMX_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 
 	s_APIDefs->GUI_Deregister(UiRoot::Render);
 	s_APIDefs->GUI_Deregister(UiRoot::Options);
@@ -94,11 +94,11 @@ void UiRoot::Render()
 	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
 
 	std::string wndName = Translate(ETexts::CombatMetrics);
-	wndName.append("###PCM::Metrics");
+	wndName.append("###CMX::Metrics");
 
 	static ImGuiExt::Positioning_t s_Position{};
 
-	ImGuiWindowFlags wndFlags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiExt::UpdatePosition("###PCM::Metrics");
+	ImGuiWindowFlags wndFlags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiExt::UpdatePosition("###CMX::Metrics");
 
 	if (missionctx && missionctx->CurrentMap && missionctx->CurrentMap->PvP)
 	{
@@ -213,7 +213,7 @@ void UiRoot::Render()
 		ImGui::EndTable();
 	}
 
-	if (ImGui::BeginPopupContextWindow("###PCM::Metrics::CtxMenu", ImGuiPopupFlags_MouseButtonRight))
+	if (ImGui::BeginPopupContextWindow("###CMX::Metrics::CtxMenu", ImGuiPopupFlags_MouseButtonRight))
 	{
 		const std::lock_guard<std::mutex> lock(s_Mutex);
 		if (ImGui::Button(s_Incoming ? Translate(ETexts::Incoming) : Translate(ETexts::Outgoing)))
@@ -225,7 +225,7 @@ void UiRoot::Render()
 		ImGui::EndPopup();
 	}
 
-	ImGuiExt::ContextMenuPosition("###PCM::Metrics::CtxMenu");
+	ImGuiExt::ContextMenuPosition("###CMX::Metrics::CtxMenu");
 
 	ImGui::End();
 }

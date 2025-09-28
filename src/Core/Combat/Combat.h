@@ -3,8 +3,8 @@
 #include "Core/Combat/CbtEncounter.h"
 #include "Nexus/Nexus.h"
 
-#define EV_PCM_COMBAT     "PCM::CombatEvent"
-#define EV_PCM_COMBAT_END "PCM::CombatEnd"
+#define EV_CMX_COMBAT     "CMX::CombatEvent"
+#define EV_CMX_COMBAT_END "CMX::CombatEnd"
 
 namespace Combat
 {
