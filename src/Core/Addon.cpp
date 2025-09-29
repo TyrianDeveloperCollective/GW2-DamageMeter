@@ -7,7 +7,6 @@
 
 #include "Combat/Combat.h"
 #include "GW2RE/Util/Validation.h"
-#include "TextCache/TextCache.h"
 #include "UI/UiRoot.h"
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef()
@@ -51,14 +50,12 @@ void Addon::Load(AddonAPI_t* aApi)
 		return;
 	}
 
-	TextCache::Create(aApi);
 	Combat::Create(aApi);
 	UiRoot::Create(aApi);
 }
 
 void Addon::Unload()
 {
-	TextCache::Destroy();
 	Combat::Destroy();
 	UiRoot::Destroy();
 }

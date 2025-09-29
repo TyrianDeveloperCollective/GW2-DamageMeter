@@ -9,7 +9,6 @@
 
 #include "Core/Combat/Combat.h"
 #include "Core/Localization.h"
-#include "Core/TextCache/TextCache.h"
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
 #include "GW2RE/Game/PropContext.h"
@@ -28,9 +27,6 @@ namespace UiRoot
 	struct DisplayEncounter_t
 	{
 		Encounter_t           Encounter = {};
-		std::vector<uint32_t> Skills;
-		std::vector<uint32_t> Agents;
-
 		Stats_t               Target    = {};
 		Stats_t               Cleave    = {};
 	};
@@ -249,24 +245,6 @@ void UiRoot::OnCombatEvent()
 
 	s_DisplayedEncounter.Encounter = currentEncounter;
 
-	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
-	{
-		if (std::find(s_DisplayedEncounter.Agents.begin(), s_DisplayedEncounter.Agents.end(), ev->SrcAgentID) == s_DisplayedEncounter.Agents.end())
-		{
-			s_DisplayedEncounter.Agents.push_back(ev->SrcAgentID);
-		}
-
-		if (std::find(s_DisplayedEncounter.Agents.begin(), s_DisplayedEncounter.Agents.end(), ev->DstAgentID) == s_DisplayedEncounter.Agents.end())
-		{
-			s_DisplayedEncounter.Agents.push_back(ev->DstAgentID);
-		}
-
-		if (std::find(s_DisplayedEncounter.Skills.begin(), s_DisplayedEncounter.Skills.end(), ev->SkillID) == s_DisplayedEncounter.Skills.end())
-		{
-			s_DisplayedEncounter.Skills.push_back(ev->SkillID);
-		}
-	}
-
 	UiRoot::CalculateTotals();
 }
 
@@ -281,15 +259,24 @@ void UiRoot::CalculateTotals()
 	{
 		if (s_Incoming)
 		{
-			if (ev->DstAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
+			if (!ev->DstAgent) { continue; }
+			if (ev->DstAgent->ID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
 		}
 		else /* outgoing */
 		{
-			if (ev->SrcAgentID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
+			if (!ev->SrcAgent) { continue; }
+			auto it = s_DisplayedEncounter.Encounter.Agents.find(ev->SrcAgent->ID);
+
+			bool isSelf = ev->SrcAgent->ID == s_DisplayedEncounter.Encounter.SelfID;
+			bool isSelfMinion = it != s_DisplayedEncounter.Encounter.Agents.end()
+				? it->second->IsMinion && it->second->OwnerID == s_DisplayedEncounter.Encounter.SelfID
+				: false;
+
+			if (!isSelf && !isSelfMinion) { continue; }
 		}
 
-		uint32_t id = s_Incoming ? ev->SrcAgentID : ev->DstAgentID;
-		uint32_t species = s_DisplayedEncounter.Encounter.AgentSpeciesLUT.at(id);
+		Agent_t* ag = s_Incoming ? ev->SrcAgent : ev->DstAgent;
+		uint32_t species = ag->SpeciesID;
 
 		bool isPrimary = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), species) != s_PrimaryTargets.end();
 		bool isSecondary = std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), species) != s_SecondaryTargets.end();

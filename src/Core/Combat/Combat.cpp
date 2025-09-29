@@ -6,12 +6,10 @@
 #include <mutex>
 #include <string>
 
-#include "Core/Addon.h"
-#include "Core/Combat/CbtEncounter.h"
-#include "Core/TextCache/TextCache.h"
 #include "GW2RE/Game/Agent/Agent.h"
 #include "GW2RE/Game/Char/Character.h"
 #include "GW2RE/Game/Char/ChCliContext.h"
+#include "GW2RE/Game/Char/ChKennel.h"
 #include "GW2RE/Game/Char/SpeciesDef.h"
 #include "GW2RE/Game/Combat/SkillDef.h"
 #include "GW2RE/Game/Combat/Tracker/CombatEvent.h"
@@ -20,9 +18,14 @@
 #include "GW2RE/Game/Game/EventApi.h"
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
+#include "GW2RE/Game/Player/Player.h"
 #include "GW2RE/Game/PropContext.h"
+#include "GW2RE/Game/Text/TextApi.h"
 #include "GW2RE/Util/Hook.h"
 #include "memtools/memtools.h"
+
+#include "CbtEncounter.h"
+#include "Core/Addon.h"
 #include "Util/src/Strings.h"
 #include "Util/src/Time.h"
 
@@ -40,12 +43,23 @@ namespace Combat
 	static GW2RE::Hook<FN_COMBATTRACKER>*            s_HookCombatTracker = nullptr;
 
 	static bool                                      s_IsInCombat        = false;
+	static GW2RE::CAgent                             s_SelfAgent         = nullptr;
 	static Encounter_t                               s_CurrentEncounter  = {};
 
 	/* Forward declare internal functions. */
-	void ResolveAgentSpecies(GW2RE::Agent_t* aAgent);
+	Agent_t* TrackAgent(GW2RE::Agent_t* aAgent);
+	Skill_t* TrackSkill(GW2RE::SkillDef_t* aSkill);
 	uint64_t __fastcall OnCombatEvent(GW2RE::CbtEvent_t*, uint32_t*);
 	void __fastcall Advance(void*, void*);
+
+	/* Text API */
+	typedef GW2RE::CodedText(__fastcall* FN_RESOLVEHASH)(GW2RE::TextHash, ...);
+	static FN_RESOLVEHASH                            s_ResolveHash = nullptr;
+
+	typedef void(__fastcall* FN_DECODETEXT)(GW2RE::CodedText, GW2RE::FN_RECEIVETEXT, void*);
+	static FN_DECODETEXT                             s_DecodeText = nullptr;
+
+	void __fastcall ReceiveText(void*, const wchar_t*);
 }
 
 void Combat::Create(AddonAPI_t* aApi)
@@ -60,6 +74,9 @@ void Combat::Create(AddonAPI_t* aApi)
 	HookRemove = (FUNC_HOOKREMOVE)s_APIDefs->MinHook_Remove;
 	HookEnable = (FUNC_HOOKENABLE)s_APIDefs->MinHook_Enable;
 	HookDisable = (FUNC_HOOKDISABLE)s_APIDefs->MinHook_Disable;
+
+	s_ResolveHash = GW2RE::S_ResolveTextHash.Scan<FN_RESOLVEHASH>();
+	s_DecodeText = GW2RE::S_DecodeText.Scan<FN_DECODETEXT>();
 
 	FN_COMBATTRACKER cbttracker = GW2RE::S_FnCombatTracker.Scan<FN_COMBATTRACKER>();
 
@@ -108,39 +125,112 @@ Encounter_t Combat::GetCurrentEncounter()
 	return s_CurrentEncounter;
 }
 
-void Combat::ResolveAgentSpecies(GW2RE::Agent_t* aAgent)
+Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 {
-	if (!aAgent)     { return; }
-	if (!aAgent->ID) { return; }
+	if (!aAgent)     { return nullptr; }
+	if (!aAgent->ID) { return nullptr; }
 
-	auto it = s_CurrentEncounter.AgentSpeciesLUT.find(aAgent->ID);
+	auto it = s_CurrentEncounter.Agents.find(aAgent->ID);
 
-	if (it == s_CurrentEncounter.AgentSpeciesLUT.end())
+	if (it != s_CurrentEncounter.Agents.end()) { return it->second; }
+	
+	it = s_CurrentEncounter.Agents.emplace(aAgent->ID, new Agent_t()).first;
+
+	it->second->ID = aAgent->ID;
+
+	GW2RE::CAgent    ag        = aAgent;
+	GW2RE::CodedText codedName = nullptr;
+
+	switch (ag.GetType())
 	{
-		GW2RE::CAgent ag = aAgent;
-		switch (ag.GetType())
+		case GW2RE::EAgentType::Char:
 		{
-			case GW2RE::EAgentType::Char:
+			it->second->Type = EAgentType::Character;
+
+			GW2RE::CCharacter character = ag.GetCharacter();
+			it->second->SpeciesID = character->SpeciesDef->ID;
+
+			if (character.IsPlayer())
 			{
-				GW2RE::CCharacter character = ag.GetCharacter();
-				s_CurrentEncounter.AgentSpeciesLUT.emplace(aAgent->ID, character->SpeciesDef->ID);
-				break;
+				GW2RE::CPlayer player = character.GetPlayer();
+
+				/* No need for decoding, can grab raw text. */
+				strcpy_s(it->second->Name, sizeof(it->second->Name), String::ToString(player.GetName()).c_str());
 			}
-			case GW2RE::EAgentType::Gadget:
+			else
 			{
-				GW2RE::CGadget gadget = ag.GetGadget();
-				s_CurrentEncounter.AgentSpeciesLUT.emplace(aAgent->ID, gadget.GetArcID());
-				break;
+				GW2RE::CCharacter master = character.GetMaster();
+				if (master)
+				{
+					/* Recursive track master agent. */
+					TrackAgent(master.GetAgent());
+
+					it->second->OwnerID = master.GetAgentId();
+					it->second->IsMinion = true;
+				}
 			}
-			case GW2RE::EAgentType::Gadget_Attack_Target:
-			{
-				GW2RE::CGadgetAttackTarget at = ag.GetGadgetAttackTarget();
-				GW2RE::CGadget owner = at.GetOwner();
-				s_CurrentEncounter.AgentSpeciesLUT.emplace(aAgent->ID, owner.GetArcID());
-				break;
-			}
+
+			codedName = character.GetCodedName();
+			break;
+		}
+		case GW2RE::EAgentType::Gadget:
+		{
+			it->second->Type = EAgentType::Gadget;
+
+			GW2RE::CGadget gadget = ag.GetGadget();
+			it->second->SpeciesID = gadget.GetArcID();
+
+			//GW2RE::CCharacter selfchar = s_SelfAgent.GetCharacter();
+			//GW2RE::CKennel kennel = selfchar->Kennel;
+			//GW2RE::CCharacter ownerchar = kennel.GetOwner();
+
+			//it->second.Something = gadget->VTable->GetSomething(gadget);
+			it->second->Something = gadget->Flags & 1;
+
+			s_APIDefs->Log(LOGL_CRITICAL, "dbg", String::Format("%u", gadget->Flags).c_str());
+
+			codedName = gadget.GetCodedName();
+			break;
+		}
+		case GW2RE::EAgentType::Gadget_Attack_Target:
+		{
+			it->second->Type = EAgentType::AttackTarget;
+
+			GW2RE::CGadgetAttackTarget at = ag.GetGadgetAttackTarget();
+			GW2RE::CGadget owner = at.GetOwner();
+			it->second->SpeciesID = owner.GetArcID();
+
+			codedName = owner.GetCodedName();
+			break;
 		}
 	}
+
+	if (codedName)
+	{
+		s_DecodeText(codedName, ReceiveText, &it->second->Name[0]);
+	}
+
+	return it->second;
+}
+
+Skill_t* Combat::TrackSkill(GW2RE::SkillDef_t* aSkill)
+{
+	if (!aSkill)       { return nullptr; }
+	if (!aSkill->ID)   { return nullptr; }
+	if (!aSkill->Name) { return nullptr; }
+
+	auto it = s_CurrentEncounter.Skills.find(aSkill->ID);
+
+	if (it != s_CurrentEncounter.Skills.end()) { return it->second; }
+
+	it = s_CurrentEncounter.Skills.emplace(aSkill->ID, new Skill_t()).first;
+
+	it->second->ID = aSkill->ID;
+
+	GW2RE::CodedText codedText = s_ResolveHash(aSkill->Name, GW2RE::ETextOperation::Terminate);
+	s_DecodeText(codedText, ReceiveText, &it->second->Name);
+
+	return it->second;
 }
 
 uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint32_t* a2)
@@ -198,9 +288,9 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	ev->Time              = s_BootTime + (aCbtEv->SysTime / 1000);
 	ev->Ms                = aCbtEv->SysTime % 1000;
 
-	ev->SrcAgentID        = aCbtEv->SrcAgent ? aCbtEv->SrcAgent->ID : 0;
-	ev->DstAgentID        = aCbtEv->DstAgent ? aCbtEv->DstAgent->ID : 0;
-	ev->SkillID           = aCbtEv->SkillDef ? aCbtEv->SkillDef->ID : 0;
+	ev->SrcAgent          = TrackAgent(aCbtEv->SrcAgent);
+	ev->DstAgent          = TrackAgent(aCbtEv->DstAgent);
+	ev->Skill             = TrackSkill(aCbtEv->SkillDef);
 
 	ev->Value             = aCbtEv->Value;
 	ev->ValueAlt          = aCbtEv->Value2;
@@ -222,38 +312,59 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 		GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
 		GW2RE::CCharCliContext cctx = propctx.GetCharCliCtx();
 		GW2RE::CAgent agent = cctx.GetControlledAgent();
+		s_SelfAgent = agent;
 		s_CurrentEncounter.SelfID = agent.GetAgentId();
 	}
 
 	s_CurrentEncounter.TimeEnd = now;
 
-	/* Store agent species. */
-	ResolveAgentSpecies(aCbtEv->SrcAgent);
-	ResolveAgentSpecies(aCbtEv->DstAgent);
-
 	/* Store combat event. */
 	s_CurrentEncounter.CombatEvents.push_back(ev);
 
-	std::string srcName = TextCache::GetAgentName(aCbtEv->SrcAgent);
-	std::string dstName = TextCache::GetAgentName(aCbtEv->DstAgent);
-	std::string skillName = TextCache::GetSkillName(aCbtEv->SkillDef);
-
-	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT);
+	s_APIDefs->Events_RaiseNotification(EV_CMX_COMBAT);
 	
-#ifdef _DEBUG
-	s_APIDefs->Log(
+	if (ev->SrcAgent && ev->SrcAgent->Type == EAgentType::Gadget)
+	{
+		s_APIDefs->Log(
+			LOGL_DEBUG,
+			ADDON_NAME,
+			String::Format(
+			"Src: %s : %u",
+			ev->SrcAgent->Name,
+			ev->SrcAgent->Something
+		).c_str()
+		);
+	}
+
+	if (ev->DstAgent && ev->DstAgent->Type == EAgentType::Gadget)
+	{
+		s_APIDefs->Log(
+			LOGL_DEBUG,
+			ADDON_NAME,
+			String::Format(
+			"Dst: %s : %u",
+			ev->DstAgent->Name,
+			ev->DstAgent->Something
+		).c_str()
+		);
+	}
+
+	/*s_APIDefs->Log(
 		LOGL_DEBUG,
 		ADDON_NAME,
 		String::Format(
-			"<c=#00ff00>%s</c> hits <c=#ff0000>%s</c> using <c=#0000ff>%s</c> with %.0f (%.0f).",
-			srcName.c_str(),
-			dstName.c_str(),
-			skillName.c_str(),
+			"[EV:%u] <c=#00ff00>%s</c> (%u) hits <c=#ff0000>%s</c> (%u) using <c=#0000ff>%s</c> (%u) with %.0f (%.0f).",
+			ev->Type,
+			ev->SrcAgent ? ev->SrcAgent->string().c_str() : "(null)",
+			ev->SrcAgent ? ev->SrcAgent->ID : 0,
+			ev->DstAgent ? ev->DstAgent->string().c_str() : "(null)",
+			ev->DstAgent ? ev->DstAgent->ID : 0,
+			ev->Skill ? ev->Skill->Name[0] ? ev->Skill->Name : "(null)" : "(null)",
+			ev->Skill ? ev->Skill->ID : 0,
 			ev->Value,
 			ev->ValueAlt
 		).c_str()
-	);
-#endif
+	);*/
 
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }
@@ -271,8 +382,30 @@ void __fastcall Combat::Advance(void*, void*)
 	if (!isInCombat && s_IsInCombat)
 	{
 		s_IsInCombat = false;
+		s_SelfAgent = nullptr;
 		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Left combat.");
-		s_CurrentEncounter.AgentNameLUT = TextCache::GetAgentNames();
 		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT_END);
 	}
+
+	/*static uint32_t s_LastMapID = 0;
+
+	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
+
+	if (missionctx && missionctx->CurrentMapID != s_LastMapID)
+	{
+		s_LastMapID = missionctx->CurrentMapID;
+
+		s_IsInCombat = false;
+		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Left combat.");
+		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT_END);
+	}*/
+}
+
+void __fastcall Combat::ReceiveText(void* aPtr, const wchar_t* aWString)
+{
+	if (!aPtr) { return; }
+
+	char* outStr = (char*)aPtr;
+
+	strcpy_s(outStr, 128, String::ToString(aWString).c_str());
 }

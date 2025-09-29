@@ -180,10 +180,10 @@ CALL Scripts\version.bat</Command>
     <ClCompile Include="src\Core\Addon.cpp" />
     <ClCompile Include="src\Core\Combat\Combat.cpp" />
     <ClCompile Include="src\Core\Localization.cpp" />
-    <ClCompile Include="src\Core\TextCache\TextCache.cpp" />
     <ClCompile Include="src\GW2RE\Game\Agent\Agent.cpp" />
     <ClCompile Include="src\GW2RE\Game\Char\Character.cpp" />
     <ClCompile Include="src\GW2RE\Game\Char\ChCliContext.cpp" />
+    <ClCompile Include="src\GW2RE\Game\Char\ChKennel.cpp" />
     <ClCompile Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.cpp" />
     <ClCompile Include="src\GW2RE\Game\Gadget\Gadget.cpp" />
     <ClCompile Include="src\GW2RE\Game\Gadget\GdAttackTarget.cpp" />
@@ -204,15 +204,16 @@ CALL Scripts\version.bat</Command>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="src\Core\Addon.h" />
+    <ClInclude Include="src\Core\Combat\CbtAgent.h" />
     <ClInclude Include="src\Core\Combat\CbtEvent.h" />
     <ClInclude Include="src\Core\Combat\Combat.h" />
     <ClInclude Include="src\Core\Combat\CbtEncounter.h" />
     <ClInclude Include="src\Core\Localization.h" />
-    <ClInclude Include="src\Core\TextCache\TextCache.h" />
     <ClInclude Include="src\GW2RE\Game\Agent\Agent.h" />
     <ClInclude Include="src\GW2RE\Game\Agent\EAgType.h" />
     <ClInclude Include="src\GW2RE\Game\Char\Character.h" />
     <ClInclude Include="src\GW2RE\Game\Char\ChCliContext.h" />
+    <ClInclude Include="src\GW2RE\Game\Char\ChKennel.h" />
     <ClInclude Include="src\GW2RE\Game\Char\SpeciesDef.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\SkillDef.h" />
     <ClInclude Include="src\GW2RE\Game\Combat\Tracker\CombatEvent.h" />
@@ -233,6 +234,7 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\GW2RE\Util\Offset.h" />
     <ClInclude Include="src\GW2RE\Util\Validation.h" />
     <ClInclude Include="src\GW2RE\Util\WrapperClass.h" />
+    <ClInclude Include="src\imgui_memory_editor.h" />
     <ClInclude Include="src\Targets.h" />
     <ClInclude Include="src\thirdparty\imgui\imgui.h" />
     <ClInclude Include="src\thirdparty\imgui\imgui_internal.h" />

@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Core/Combat/CbtEncounter.h"
 #include "Nexus/Nexus.h"
+
+#include "CbtEncounter.h"
 
 #define EV_CMX_COMBAT     "CMX::CombatEvent"
 #define EV_CMX_COMBAT_END "CMX::CombatEnd"
