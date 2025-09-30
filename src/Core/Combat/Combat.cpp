@@ -180,8 +180,11 @@ Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 			GW2RE::CGadget gadget = ag.GetGadget();
 			it->second->SpeciesID = gadget.GetArcID();
 
-			it->second->IsMinion = gadget->Flags & 1;
-			it->second->OwnerID = s_CurrentEncounter.SelfID;
+			if (gadget->Flags & 1)
+			{
+				it->second->IsMinion = true;
+				it->second->OwnerID = s_CurrentEncounter.SelfID;
+			}
 
 			codedName = gadget.GetCodedName();
 			break;
