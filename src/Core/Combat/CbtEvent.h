@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 
 #include "CbtAgent.h"
 
@@ -15,6 +16,16 @@ struct Skill_t
 {
 	uint32_t ID;
 	char     Name[128];
+
+	inline std::string GetName()
+	{
+		if (this->Name[0])
+		{
+			return this->Name;
+		}
+
+		return "sk-" + std::to_string(this->ID);
+	}
 };
 
 struct CombatEvent_t

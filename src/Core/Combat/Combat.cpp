@@ -165,8 +165,8 @@ Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 					/* Recursive track master agent. */
 					TrackAgent(master.GetAgent());
 
-					it->second->OwnerID = master.GetAgentId();
 					it->second->IsMinion = true;
+					it->second->OwnerID = master.GetAgentId();
 				}
 			}
 
@@ -180,14 +180,8 @@ Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 			GW2RE::CGadget gadget = ag.GetGadget();
 			it->second->SpeciesID = gadget.GetArcID();
 
-			//GW2RE::CCharacter selfchar = s_SelfAgent.GetCharacter();
-			//GW2RE::CKennel kennel = selfchar->Kennel;
-			//GW2RE::CCharacter ownerchar = kennel.GetOwner();
-
-			//it->second.Something = gadget->VTable->GetSomething(gadget);
-			it->second->Something = gadget->Flags & 1;
-
-			s_APIDefs->Log(LOGL_CRITICAL, "dbg", String::Format("%u", gadget->Flags).c_str());
+			it->second->IsMinion = gadget->Flags & 1;
+			it->second->OwnerID = s_CurrentEncounter.SelfID;
 
 			codedName = gadget.GetCodedName();
 			break;
@@ -323,48 +317,22 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 
 	s_APIDefs->Events_RaiseNotification(EV_CMX_COMBAT);
 	
-	if (ev->SrcAgent && ev->SrcAgent->Type == EAgentType::Gadget)
-	{
-		s_APIDefs->Log(
-			LOGL_DEBUG,
-			ADDON_NAME,
-			String::Format(
-			"Src: %s : %u",
-			ev->SrcAgent->Name,
-			ev->SrcAgent->Something
-		).c_str()
-		);
-	}
-
-	if (ev->DstAgent && ev->DstAgent->Type == EAgentType::Gadget)
-	{
-		s_APIDefs->Log(
-			LOGL_DEBUG,
-			ADDON_NAME,
-			String::Format(
-			"Dst: %s : %u",
-			ev->DstAgent->Name,
-			ev->DstAgent->Something
-		).c_str()
-		);
-	}
-
-	/*s_APIDefs->Log(
+	s_APIDefs->Log(
 		LOGL_DEBUG,
 		ADDON_NAME,
 		String::Format(
 			"[EV:%u] <c=#00ff00>%s</c> (%u) hits <c=#ff0000>%s</c> (%u) using <c=#0000ff>%s</c> (%u) with %.0f (%.0f).",
 			ev->Type,
-			ev->SrcAgent ? ev->SrcAgent->string().c_str() : "(null)",
+			ev->SrcAgent ? ev->SrcAgent->GetName().c_str() : "(null)",
 			ev->SrcAgent ? ev->SrcAgent->ID : 0,
-			ev->DstAgent ? ev->DstAgent->string().c_str() : "(null)",
+			ev->DstAgent ? ev->DstAgent->GetName().c_str() : "(null)",
 			ev->DstAgent ? ev->DstAgent->ID : 0,
-			ev->Skill ? ev->Skill->Name[0] ? ev->Skill->Name : "(null)" : "(null)",
+			ev->Skill ? ev->Skill->GetName().c_str() : "(null)",
 			ev->Skill ? ev->Skill->ID : 0,
 			ev->Value,
 			ev->ValueAlt
 		).c_str()
-	);*/
+	);
 
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }

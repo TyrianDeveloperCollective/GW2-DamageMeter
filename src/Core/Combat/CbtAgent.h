@@ -16,12 +16,11 @@ struct Agent_t
 	uint32_t    SpeciesID;
 	EAgentType  Type;
 	char        Name[128];
-	uint32_t    OwnerID;
+
 	bool        IsMinion;
+	uint32_t    OwnerID;
 
-	uint32_t    Something;
-
-	inline std::string string()
+	inline std::string GetName()
 	{
 		if (this->Name[0])
 		{
@@ -31,13 +30,13 @@ struct Agent_t
 		switch (this->Type)
 		{
 			default:
-				return "ag" + std::to_string(this->ID);
+				return "ag-" + std::to_string(this->ID);
 			case EAgentType::Character:
-				return "ch" + std::to_string(this->ID);
+				return "ch-" + std::to_string(this->ID);
 			case EAgentType::Gadget:
-				return "gd" + std::to_string(this->ID);
+				return "gd-" + std::to_string(this->ID);
 			case EAgentType::AttackTarget:
-				return "at" + std::to_string(this->ID);
+				return "at-" + std::to_string(this->ID);
 		}
 	}
 };
