@@ -23,6 +23,7 @@
 #include "GW2RE/Game/Text/TextApi.h"
 #include "GW2RE/Util/Hook.h"
 #include "memtools/memtools.h"
+#include "Targets.h"
 
 #include "CbtEncounter.h"
 #include "Core/Addon.h"
@@ -37,19 +38,21 @@ FUNC_HOOKDISABLE HookDisable = nullptr;
 namespace Combat
 {
 	static AddonAPI_t*                               s_APIDefs           = nullptr;
-	static std::time_t                               s_BootTime          = {};
+	static uint64_t                                  s_BootTime          = {}; // boot time in ms
 
 	typedef uint64_t(__fastcall* FN_COMBATTRACKER)(GW2RE::CbtEvent_t*, uint32_t*);
 	static GW2RE::Hook<FN_COMBATTRACKER>*            s_HookCombatTracker = nullptr;
 
-	static bool                                      s_IsInCombat        = false;
 	static GW2RE::CAgent                             s_SelfAgent         = nullptr;
-	static Encounter_t                               s_CurrentEncounter  = {};
+	static Encounter_t*                              s_ActiveEncounter   = nullptr;
+	static std::vector<Encounter_t*>                 s_History           = {};
 
 	/* Forward declare internal functions. */
 	Agent_t* TrackAgent(GW2RE::Agent_t* aAgent);
 	Skill_t* TrackSkill(GW2RE::SkillDef_t* aSkill);
 	uint64_t __fastcall OnCombatEvent(GW2RE::CbtEvent_t*, uint32_t*);
+	void CombatStart();
+	void CombatEnd();
 	void __fastcall Advance(void*, void*);
 
 	/* Text API */
@@ -67,7 +70,7 @@ void Combat::Create(AddonAPI_t* aApi)
 	s_APIDefs = aApi;
 
 	/* Get system time offset for combat events. */
-	s_BootTime = std::time(nullptr) - static_cast<std::time_t>(GetTickCount64() / 1000);
+	s_BootTime = (std::time(nullptr) * 1000) - GetTickCount64();
 
 	/* Set auxillary functions for Hook struct. */
 	HookCreate = (FUNC_HOOKCREATE)s_APIDefs->MinHook_Create;
@@ -117,12 +120,17 @@ bool Combat::IsRegistered()
 
 bool Combat::IsActive()
 {
-	return s_IsInCombat;
+	return s_ActiveEncounter != nullptr;
 }
 
-Encounter_t Combat::GetCurrentEncounter()
+Encounter_t* Combat::GetCurrentEncounter()
 {
-	return s_CurrentEncounter;
+	return s_ActiveEncounter;
+}
+
+std::vector<Encounter_t*> Combat::GetHistory()
+{
+	return s_History;
 }
 
 Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
@@ -130,11 +138,11 @@ Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 	if (!aAgent)     { return nullptr; }
 	if (!aAgent->ID) { return nullptr; }
 
-	auto it = s_CurrentEncounter.Agents.find(aAgent->ID);
+	auto it = s_ActiveEncounter->Agents.find(aAgent->ID);
 
-	if (it != s_CurrentEncounter.Agents.end()) { return it->second; }
+	if (it != s_ActiveEncounter->Agents.end()) { return it->second; }
 	
-	it = s_CurrentEncounter.Agents.emplace(aAgent->ID, new Agent_t()).first;
+	it = s_ActiveEncounter->Agents.emplace(aAgent->ID, new Agent_t()).first;
 
 	it->second->ID = aAgent->ID;
 
@@ -183,7 +191,7 @@ Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 			if (gadget->Flags & 1)
 			{
 				it->second->IsMinion = true;
-				it->second->OwnerID = s_CurrentEncounter.SelfID;
+				it->second->OwnerID = s_ActiveEncounter->Self->ID;
 			}
 
 			codedName = gadget.GetCodedName();
@@ -216,11 +224,11 @@ Skill_t* Combat::TrackSkill(GW2RE::SkillDef_t* aSkill)
 	if (!aSkill->ID)   { return nullptr; }
 	if (!aSkill->Name) { return nullptr; }
 
-	auto it = s_CurrentEncounter.Skills.find(aSkill->ID);
+	auto it = s_ActiveEncounter->Skills.find(aSkill->ID);
 
-	if (it != s_CurrentEncounter.Skills.end()) { return it->second; }
+	if (it != s_ActiveEncounter->Skills.end()) { return it->second; }
 
-	it = s_CurrentEncounter.Skills.emplace(aSkill->ID, new Skill_t()).first;
+	it = s_ActiveEncounter->Skills.emplace(aSkill->ID, new Skill_t()).first;
 
 	it->second->ID = aSkill->ID;
 
@@ -278,12 +286,13 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 		}
 	}
 
+	CombatStart();
+
 	/* Allocate and assign new internal event type. */
-	CombatEvent_t* ev     = new CombatEvent_t();
+	CombatEvent_t* ev = new CombatEvent_t();
 	ev->Type              = evType;
 
-	ev->Time              = s_BootTime + (aCbtEv->SysTime / 1000);
-	ev->Ms                = aCbtEv->SysTime % 1000;
+	ev->Time              = s_BootTime + aCbtEv->SysTime;
 
 	ev->SrcAgent          = TrackAgent(aCbtEv->SrcAgent);
 	ev->DstAgent          = TrackAgent(aCbtEv->DstAgent);
@@ -296,29 +305,114 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	ev->IsCritical        = aCbtEv.IsCritical();
 	ev->IsFumble          = aCbtEv.IsFumble();
 
-	uint64_t now = Time::GetTimestampMs();
-
-	/* Entered combat. */
-	if (!s_IsInCombat || s_CurrentEncounter.TimeStart == 0)
-	{
-		s_IsInCombat = true;
-		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Entered combat.");
-		s_CurrentEncounter = {};
-		s_CurrentEncounter.TimeStart = now;
-
-		GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
-		GW2RE::CCharCliContext cctx = propctx.GetCharCliCtx();
-		GW2RE::CAgent agent = cctx.GetControlledAgent();
-		s_SelfAgent = agent;
-		s_CurrentEncounter.SelfID = agent.GetAgentId();
-	}
-
-	s_CurrentEncounter.TimeEnd = now;
+	/* End time is always combat event time. */
+	s_ActiveEncounter->TimeEnd = ev->Time;
 
 	/* Store combat event. */
-	s_CurrentEncounter.CombatEvents.push_back(ev);
+	s_ActiveEncounter->CombatEvents.push_back(ev);
 
-	s_APIDefs->Events_RaiseNotification(EV_CMX_COMBAT);
+	/* Check for trigger ID. */
+	if (s_ActiveEncounter->TriggerID == 0)
+	{
+		if (ev->SrcAgent && ev->SrcAgent->ID)
+		{
+			if (std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->SrcAgent->ID) != s_PrimaryTargets.end())
+			{
+				s_ActiveEncounter->TriggerID = ev->SrcAgent->ID;
+			}
+		}
+		else if (ev->DstAgent && ev->DstAgent->ID)
+		{
+			if (std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->DstAgent->ID) != s_PrimaryTargets.end())
+			{
+				s_ActiveEncounter->TriggerID = ev->DstAgent->ID;
+			}
+		}
+	}
+
+	/* Process stats. */
+	{
+		/*              hasSrc       &&  src is self                               ||  src is owned minion */
+		bool outgoing = ev->SrcAgent && ((ev->SrcAgent == s_ActiveEncounter->Self) || (ev->SrcAgent->OwnerID == s_ActiveEncounter->Self->ID));
+		bool incoming = ev->DstAgent && ev->DstAgent == s_ActiveEncounter->Self;
+
+		if (outgoing && ev->DstAgent)
+		{
+			bool isTarget = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->DstAgent->SpeciesID) != s_PrimaryTargets.end()
+				|| std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), ev->DstAgent->SpeciesID) != s_SecondaryTargets.end();
+
+			if (ev->Value < 0)
+			{
+				/* Damage */
+
+				s_ActiveEncounter->OutCleave.Damage += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->OutTarget.Damage += ev->Value;
+				}
+			}
+			else if (ev->Value > 0)
+			{
+				/* Heal */
+				s_ActiveEncounter->OutCleave.Heal += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->OutTarget.Heal += ev->Value;
+				}
+			}
+			else if (ev->ValueAlt > 0)
+			{
+				/* Barrier */
+				s_ActiveEncounter->OutCleave.Barrier += ev->ValueAlt;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->OutTarget.Barrier += ev->ValueAlt;
+				}
+			}
+		}
+		else if (incoming && ev->SrcAgent)
+		{
+			bool isTarget = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->SrcAgent->SpeciesID) != s_PrimaryTargets.end()
+				|| std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), ev->SrcAgent->SpeciesID) != s_SecondaryTargets.end();
+
+			if (ev->Value < 0)
+			{
+				/* Damage */
+
+				s_ActiveEncounter->InCleave.Damage += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->InTarget.Damage += ev->Value;
+				}
+			}
+			else if (ev->Value > 0)
+			{
+				/* Heal */
+				s_ActiveEncounter->InCleave.Heal += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->InTarget.Heal += ev->Value;
+				}
+			}
+			else if (ev->ValueAlt > 0)
+			{
+				/* Barrier */
+				s_ActiveEncounter->InCleave.Barrier += ev->ValueAlt;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->InTarget.Barrier += ev->ValueAlt;
+				}
+			}
+		}
+	}
+
+	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT);
 	
 	s_APIDefs->Log(
 		LOGL_DEBUG,
@@ -340,36 +434,70 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }
 
-void __fastcall Combat::Advance(void*, void*)
+void Combat::CombatStart()
 {
-	GW2RE::CPropContext    propctx   = GW2RE::CPropContext::Get();
-	GW2RE::CCharCliContext cctx      = propctx.GetCharCliCtx();
-	GW2RE::CCharacter      character = cctx.GetOwnedCharacter();
+	/* If no active encounter -> Combat entry. */
+	if (s_ActiveEncounter) { return; }
 
-	if (!character) { return; }
+	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Entered combat.");
 
-	bool isInCombat = (character->Flags & GW2RE::ECharacterFlags::IsInCombat) == GW2RE::ECharacterFlags::IsInCombat;
+	s_ActiveEncounter = new Encounter_t();
+	s_ActiveEncounter->TimeStart = s_BootTime + GetTickCount64();
 
-	if (!isInCombat && s_IsInCombat)
+	/* Grab self agent for reference. */
+	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
+	GW2RE::CCharCliContext cctx = propctx.GetCharCliCtx();
+	GW2RE::CAgent agent = cctx.GetControlledAgent();
+	s_SelfAgent = agent;
+	s_ActiveEncounter->Self = TrackAgent(agent.ptr());
+}
+
+void Combat::CombatEnd()
+{
+	if (!s_ActiveEncounter) { return; }
+
+	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Combat end.");
+	s_SelfAgent = nullptr;
+
+	if (s_ActiveEncounter->TriggerID)
 	{
-		s_IsInCombat = false;
-		s_SelfAgent = nullptr;
-		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Left combat.");
-		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT_END);
+		/* TODO: Write log. */
 	}
 
-	/*static uint32_t s_LastMapID = 0;
+	s_History.push_back(s_ActiveEncounter);
+	s_ActiveEncounter = nullptr;
+}
 
+void __fastcall Combat::Advance(void*, void*)
+{
+	GW2RE::CPropContext      propctx    = GW2RE::CPropContext::Get();
+	GW2RE::CCharCliContext   cctx       = propctx.GetCharCliCtx();
+	GW2RE::CCharacter        character  = cctx.GetOwnedCharacter();
 	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
 
-	if (missionctx && missionctx->CurrentMapID != s_LastMapID)
+	static uint32_t s_LastMapID = 0;
+
+	if (missionctx->CurrentMapID != s_LastMapID)
 	{
 		s_LastMapID = missionctx->CurrentMapID;
+		CombatEnd();
+	}
+	else if (!character)
+	{
+		CombatEnd();
+	}
+	else if (s_ActiveEncounter)
+	{
+		bool isInCombat = (character->Flags & GW2RE::ECharacterFlags::IsInCombat) == GW2RE::ECharacterFlags::IsInCombat;
 
-		s_IsInCombat = false;
-		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Left combat.");
-		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT_END);
-	}*/
+		if (!isInCombat)
+		{
+			uint64_t delta = std::time(nullptr) - (s_ActiveEncounter->TimeEnd / 1000);
+
+			/* If last combat event is longer than 15s ago. End combat. */
+			if (delta >= 15) { CombatEnd(); }
+		}
+	}
 }
 
 void __fastcall Combat::ReceiveText(void* aPtr, const wchar_t* aWString)

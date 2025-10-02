@@ -33,7 +33,6 @@ struct CombatEvent_t
 	ECombatEventType Type;
 
 	uint64_t         Time;
-	uint32_t         Ms;
 
 	Agent_t*         SrcAgent;
 	Agent_t*         DstAgent;

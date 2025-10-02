@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Nexus/Nexus.h"
+#include <vector>
 
+#include "Nexus/Nexus.h"
 #include "CbtEncounter.h"
 
-#define EV_CMX_COMBAT     "CMX::CombatEvent"
-#define EV_CMX_COMBAT_END "CMX::CombatEnd"
+#define EV_CMX_COMBAT "CMX::CombatEvent"
 
 namespace Combat
 {
@@ -17,6 +17,8 @@ namespace Combat
 
 	bool IsActive();
 
-	Encounter_t GetCurrentEncounter();
+	Encounter_t* GetCurrentEncounter();
+
+	std::vector<Encounter_t*> GetHistory();
 }
  

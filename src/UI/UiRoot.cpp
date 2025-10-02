@@ -17,29 +17,14 @@
 
 namespace UiRoot
 {
-	struct Stats_t
-	{
-		float Damage  = 0.f;
-		float Heal    = 0.f;
-		float Barrier = 0.f;
-	};
-
-	struct DisplayEncounter_t
-	{
-		Encounter_t           Encounter = {};
-		Stats_t               Target    = {};
-		Stats_t               Cleave    = {};
-	};
-
-	static AddonAPI_t*        s_APIDefs = nullptr;
+	static AddonAPI_t*  s_APIDefs            = nullptr;
 	
-	static std::mutex         s_Mutex;
-	static DisplayEncounter_t s_DisplayedEncounter;
+	static Encounter_t  s_NullEncounter      = {};
+	static Encounter_t* s_DisplayedEncounter = &s_NullEncounter;
 
-	static bool               s_Incoming = false;
+	static bool         s_Incoming           = false;
 
 	void OnCombatEvent();
-	void CalculateTotals();
 }
 
 void UiRoot::Create(AddonAPI_t* aApi)
@@ -55,7 +40,6 @@ void UiRoot::Create(AddonAPI_t* aApi)
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
 
 	s_APIDefs->Events_Subscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-	s_APIDefs->Events_Subscribe(EV_CMX_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 }
 
 void UiRoot::Destroy()
@@ -63,7 +47,6 @@ void UiRoot::Destroy()
 	if (!s_APIDefs) { return; }
 
 	s_APIDefs->Events_Unsubscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-	s_APIDefs->Events_Unsubscribe(EV_CMX_COMBAT_END, (EVENT_CONSUME)OnCombatEvent);
 
 	s_APIDefs->GUI_Deregister(UiRoot::Render);
 	s_APIDefs->GUI_Deregister(UiRoot::Options);
@@ -114,8 +97,7 @@ void UiRoot::Render()
 
 	if (ImGui::Begin(wndName.c_str(), 0, wndFlags))
 	{
-		const std::lock_guard<std::mutex> lock(s_Mutex);
-		uint64_t cbtDurationMs = s_DisplayedEncounter.Encounter.TimeEnd - s_DisplayedEncounter.Encounter.TimeStart;
+		uint64_t cbtDurationMs = s_DisplayedEncounter->TimeEnd - s_DisplayedEncounter->TimeStart;
 		float cbtDuration = max(cbtDurationMs, 1000) / 1000.f;
 
 		std::string durationStr;
@@ -142,23 +124,32 @@ void UiRoot::Render()
 			ImGui::TableNextColumn();
 			ImGui::TextDisabled(Translate(ETexts::Damage));
 
+			float* damageCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Damage : &s_DisplayedEncounter->OutCleave.Damage;
+			float* damageTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Damage : &s_DisplayedEncounter->OutTarget.Damage;
+
+			float* healCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Heal : &s_DisplayedEncounter->OutCleave.Heal;
+			float* healTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Heal : &s_DisplayedEncounter->OutTarget.Heal;
+
+			float* barrierCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Barrier : &s_DisplayedEncounter->OutCleave.Barrier;
+			float* barrierTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Barrier : &s_DisplayedEncounter->OutTarget.Barrier;
+
 			/* DPS Target */
 			ImGui::TableNextColumn();
-			std::string dpsTarget = s_DisplayedEncounter.Target.Damage < 0.f
-				? String::FormatNumberDenominated(abs(s_DisplayedEncounter.Target.Damage) / cbtDuration) + "/s"
+			std::string dpsTarget = *damageTarget < 0.f
+				? String::FormatNumberDenominated(abs(*damageTarget) / cbtDuration) + "/s"
 				: "-/s";
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsTarget.c_str()).x);
 			ImGui::Text(dpsTarget.c_str());
-			TooltipGeneric("%.0f, %s", abs(s_DisplayedEncounter.Target.Damage), durationStr.c_str());
+			TooltipGeneric("%.0f, %s", abs(*damageTarget), durationStr.c_str());
 
 			/* DPS Cleave */
 			ImGui::TableNextColumn();
-			std::string dpsCleave = s_DisplayedEncounter.Cleave.Damage < 0.f
-				? String::FormatNumberDenominated(abs(s_DisplayedEncounter.Cleave.Damage) / cbtDuration) + "/s"
+			std::string dpsCleave = *damageCleave < 0.f
+				? String::FormatNumberDenominated(abs(*damageCleave) / cbtDuration) + "/s"
 				: "-/s";
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(dpsCleave.c_str()).x);
 			ImGui::Text(dpsCleave.c_str());
-			TooltipGeneric("%.0f, %s", abs(s_DisplayedEncounter.Cleave.Damage), durationStr.c_str());
+			TooltipGeneric("%.0f, %s", abs(*damageCleave), durationStr.c_str());
 
 			/* Heal row. */
 			ImGui::TableNextRow();
@@ -167,21 +158,21 @@ void UiRoot::Render()
 
 			/* Heal Target */
 			ImGui::TableNextColumn();
-			std::string hpsTarget = s_DisplayedEncounter.Target.Heal > 0.f
-				? String::FormatNumberDenominated(s_DisplayedEncounter.Target.Heal / cbtDuration) + "/s"
+			std::string hpsTarget = *healTarget > 0.f
+				? String::FormatNumberDenominated(*healTarget / cbtDuration) + "/s"
 				: "-/s";
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsTarget.c_str()).x);
 			ImGui::Text(hpsTarget.c_str());
-			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Target.Heal, durationStr.c_str());
+			TooltipGeneric("%.0f, %s", *healTarget, durationStr.c_str());
 
 			/* Heal Cleave */
 			ImGui::TableNextColumn();
-			std::string hpsCleave = s_DisplayedEncounter.Cleave.Heal > 0.f
-				? String::FormatNumberDenominated(s_DisplayedEncounter.Cleave.Heal / cbtDuration) + "/s"
+			std::string hpsCleave = *healCleave > 0.f
+				? String::FormatNumberDenominated(*healCleave / cbtDuration) + "/s"
 				: "-/s";
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(hpsCleave.c_str()).x);
 			ImGui::Text(hpsCleave.c_str());
-			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Cleave.Heal, durationStr.c_str());
+			TooltipGeneric("%.0f, %s", *healCleave, durationStr.c_str());
 
 			/* Barrier row. */
 			ImGui::TableNextRow();
@@ -190,32 +181,30 @@ void UiRoot::Render()
 
 			/* Barrier Target */
 			ImGui::TableNextColumn();
-			std::string bpsTarget = s_DisplayedEncounter.Target.Barrier > 0.f
-				? String::FormatNumberDenominated(s_DisplayedEncounter.Target.Barrier / cbtDuration) + "/s"
+			std::string bpsTarget = *barrierTarget > 0.f
+				? String::FormatNumberDenominated(*barrierTarget / cbtDuration) + "/s"
 				: "-/s";
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsTarget.c_str()).x);
 			ImGui::Text(bpsTarget.c_str());
-			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Target.Barrier, durationStr.c_str());
+			TooltipGeneric("%.0f, %s", *barrierTarget, durationStr.c_str());
 
 			/* Barrier Cleave*/
 			ImGui::TableNextColumn();
-			std::string bpsCleave = s_DisplayedEncounter.Cleave.Barrier > 0.f
-				? String::FormatNumberDenominated(s_DisplayedEncounter.Cleave.Barrier / cbtDuration) + "/s"
+			std::string bpsCleave = *barrierCleave > 0.f
+				? String::FormatNumberDenominated(*barrierCleave / cbtDuration) + "/s"
 				: "-/s";
 			ImGui::SetCursorPosX(ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(bpsCleave.c_str()).x);
 			ImGui::Text(bpsCleave.c_str());
-			TooltipGeneric("%.0f, %s", s_DisplayedEncounter.Cleave.Barrier, durationStr.c_str());
+			TooltipGeneric("%.0f, %s", *barrierCleave, durationStr.c_str());
 		}
 		ImGui::EndTable();
 	}
 
 	if (ImGui::BeginPopupContextWindow("###CMX::Metrics::CtxMenu", ImGuiPopupFlags_MouseButtonRight))
 	{
-		const std::lock_guard<std::mutex> lock(s_Mutex);
 		if (ImGui::Button(s_Incoming ? Translate(ETexts::Incoming) : Translate(ETexts::Outgoing)))
 		{
 			s_Incoming = !s_Incoming;
-			CalculateTotals();
 		}
 
 		ImGui::EndPopup();
@@ -233,80 +222,5 @@ void UiRoot::Options()
 
 void UiRoot::OnCombatEvent()
 {
-	const std::lock_guard<std::mutex> lock(s_Mutex);
-
-	Encounter_t currentEncounter = Combat::GetCurrentEncounter();
-
-	if (currentEncounter.TimeStart != s_DisplayedEncounter.Encounter.TimeStart)
-	{
-		/* TODO: Store old display encounter. */
-		s_DisplayedEncounter = {};
-	}
-
-	s_DisplayedEncounter.Encounter = currentEncounter;
-
-	UiRoot::CalculateTotals();
-}
-
-void UiRoot::CalculateTotals()
-{
-	s_DisplayedEncounter.Cleave = {};
-	s_DisplayedEncounter.Target = {};
-
-	//minions need to count towards your own dps
-
-	for (CombatEvent_t* ev : s_DisplayedEncounter.Encounter.CombatEvents)
-	{
-		if (s_Incoming)
-		{
-			if (!ev->DstAgent) { continue; }
-			if (ev->DstAgent->ID != s_DisplayedEncounter.Encounter.SelfID) { continue; }
-		}
-		else /* outgoing */
-		{
-			if (!ev->SrcAgent) { continue; }
-			auto it = s_DisplayedEncounter.Encounter.Agents.find(ev->SrcAgent->ID);
-
-			bool isSelf = ev->SrcAgent->ID == s_DisplayedEncounter.Encounter.SelfID;
-			bool isSelfMinion = it != s_DisplayedEncounter.Encounter.Agents.end()
-				? it->second->IsMinion && it->second->OwnerID == s_DisplayedEncounter.Encounter.SelfID
-				: false;
-
-			if (!isSelf && !isSelfMinion) { continue; }
-		}
-
-		Agent_t* ag = s_Incoming ? ev->SrcAgent : ev->DstAgent;
-		uint32_t species = ag->SpeciesID;
-
-		bool isPrimary = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), species) != s_PrimaryTargets.end();
-		bool isSecondary = std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), species) != s_SecondaryTargets.end();
-
-		if (ev->Value < 0)
-		{
-			s_DisplayedEncounter.Cleave.Damage += ev->Value;
-
-			if (isPrimary || isSecondary)
-			{
-				s_DisplayedEncounter.Target.Damage += ev->Value;
-			}
-		}
-		else if (ev->Value > 0)
-		{
-			s_DisplayedEncounter.Cleave.Heal += ev->Value;
-
-			if (isPrimary || isSecondary)
-			{
-				s_DisplayedEncounter.Target.Heal += ev->Value;
-			}
-		}
-		else if (ev->ValueAlt > 0)
-		{
-			s_DisplayedEncounter.Cleave.Barrier += ev->ValueAlt;
-
-			if (isPrimary || isSecondary)
-			{
-				s_DisplayedEncounter.Target.Barrier += ev->ValueAlt;
-			}
-		}
-	}
+	s_DisplayedEncounter = Combat::GetCurrentEncounter();
 }
