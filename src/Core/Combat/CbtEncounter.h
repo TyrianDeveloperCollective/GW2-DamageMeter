@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <cstdint>
 #include <string>
 #include <unordered_map>
@@ -52,7 +53,11 @@ struct Encounter_t
 			}
 		}
 
-		return targetName + "(" + this->Duration() + ")";
+		time_t time = this->TimeStart / 1000; // needs to be in seconds
+		tm tm{};
+		localtime_s(&tm, &time);
+
+		return String::Format("%02d:%02d:%02d, %s (%s)", tm.tm_hour, tm.tm_min, tm.tm_sec, this->Duration(), targetName.c_str());
 	}
 
 	inline std::string Duration()
