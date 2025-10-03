@@ -18,7 +18,5 @@ namespace Combat
 	bool IsActive();
 
 	Encounter_t* GetCurrentEncounter();
-
-	std::vector<Encounter_t*> GetHistory();
 }
  

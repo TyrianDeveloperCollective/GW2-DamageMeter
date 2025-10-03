@@ -27,6 +27,7 @@
 
 #include "CbtEncounter.h"
 #include "Core/Addon.h"
+#include "UI/UiRoot.h"
 #include "Util/src/Strings.h"
 #include "Util/src/Time.h"
 
@@ -45,13 +46,11 @@ namespace Combat
 
 	static GW2RE::CAgent                             s_SelfAgent         = nullptr;
 	static Encounter_t*                              s_ActiveEncounter   = nullptr;
-	static std::vector<Encounter_t*>                 s_History           = {};
 
 	/* Forward declare internal functions. */
 	Agent_t* TrackAgent(GW2RE::Agent_t* aAgent);
 	Skill_t* TrackSkill(GW2RE::SkillDef_t* aSkill);
 	uint64_t __fastcall OnCombatEvent(GW2RE::CbtEvent_t*, uint32_t*);
-	void CombatStart();
 	void CombatEnd();
 	void __fastcall Advance(void*, void*);
 
@@ -126,11 +125,6 @@ bool Combat::IsActive()
 Encounter_t* Combat::GetCurrentEncounter()
 {
 	return s_ActiveEncounter;
-}
-
-std::vector<Encounter_t*> Combat::GetHistory()
-{
-	return s_History;
 }
 
 Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
@@ -286,7 +280,22 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 		}
 	}
 
-	CombatStart();
+	/* If no active encounter -> Combat entry. */
+	if (!s_ActiveEncounter)
+	{
+		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Entered combat.");
+
+		s_ActiveEncounter = new Encounter_t();
+		s_ActiveEncounter->TimeStart = s_BootTime + aCbtEv->SysTime;
+
+		/* Grab self agent for reference. */
+		GW2RE::CPropContext    propctx = GW2RE::CPropContext::Get();
+		GW2RE::CCharCliContext cctx    = propctx.GetCharCliCtx();
+		GW2RE::CAgent          agent   = cctx.GetControlledAgent();
+
+		s_SelfAgent = agent;
+		s_ActiveEncounter->Self = TrackAgent(agent.ptr());
+	}
 
 	/* Allocate and assign new internal event type. */
 	CombatEvent_t* ev = new CombatEvent_t();
@@ -434,24 +443,6 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
 }
 
-void Combat::CombatStart()
-{
-	/* If no active encounter -> Combat entry. */
-	if (s_ActiveEncounter) { return; }
-
-	s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Entered combat.");
-
-	s_ActiveEncounter = new Encounter_t();
-	s_ActiveEncounter->TimeStart = s_BootTime + GetTickCount64();
-
-	/* Grab self agent for reference. */
-	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
-	GW2RE::CCharCliContext cctx = propctx.GetCharCliCtx();
-	GW2RE::CAgent agent = cctx.GetControlledAgent();
-	s_SelfAgent = agent;
-	s_ActiveEncounter->Self = TrackAgent(agent.ptr());
-}
-
 void Combat::CombatEnd()
 {
 	if (!s_ActiveEncounter) { return; }
@@ -464,8 +455,9 @@ void Combat::CombatEnd()
 		/* TODO: Write log. */
 	}
 
-	s_History.push_back(s_ActiveEncounter);
 	s_ActiveEncounter = nullptr;
+
+	UiRoot::OnCombatEnd();
 }
 
 void __fastcall Combat::Advance(void*, void*)
@@ -492,10 +484,15 @@ void __fastcall Combat::Advance(void*, void*)
 
 		if (!isInCombat)
 		{
-			uint64_t delta = std::time(nullptr) - (s_ActiveEncounter->TimeEnd / 1000);
-
-			/* If last combat event is longer than 15s ago. End combat. */
-			if (delta >= 15) { CombatEnd(); }
+			///* If instance, end combat after 15s of */
+			//if (missionctx->CurrentMap->Type == GW2RE::EMapType::Instance)
+			//{
+			//	uint64_t delta = std::time(nullptr) - (s_ActiveEncounter->TimeEnd / 1000);
+			//
+			//	/* If last combat event is longer than 15s ago. End combat. */
+			//	if (delta >= 15) { CombatEnd(); }
+			//}
+			CombatEnd();
 		}
 	}
 }

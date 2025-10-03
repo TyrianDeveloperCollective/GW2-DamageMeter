@@ -7,6 +7,7 @@
 
 #include "CbtAgent.h"
 #include "CbtEvent.h"
+#include "Util/src/Strings.h"
 
 struct Stats_t
 {
@@ -31,4 +32,45 @@ struct Encounter_t
 	std::unordered_map<uint32_t, Agent_t*> Agents;
 	std::unordered_map<uint32_t, Skill_t*> Skills;
 	std::vector<CombatEvent_t*>            CombatEvents;
+
+	inline std::string GetName()
+	{
+		std::string targetName;
+		if (this->TriggerID)
+		{
+			targetName = this->Agents.at(TriggerID)->GetName();
+		}
+		else
+		{
+			for (CombatEvent_t* ev : this->CombatEvents)
+			{
+				if (ev->SrcAgent == this->Self && ev->DstAgent && ev->DstAgent != this->Self)
+				{
+					targetName = ev->DstAgent->GetName();
+					break;
+				}
+			}
+		}
+
+		return targetName + "(" + this->Duration() + ")";
+	}
+
+	inline std::string Duration()
+	{
+		uint64_t cbtDurationMs = max(this->TimeEnd - this->TimeStart, 1000);
+		float cbtDuration = cbtDurationMs / 1000.f;
+
+		std::string durationStr;
+
+		if (cbtDurationMs > 60000)
+		{
+			durationStr = String::Format("%um%.2fs", cbtDurationMs / 1000 / 60, fmod(cbtDuration, 60.f));
+		}
+		else
+		{
+			durationStr = String::Format("%.2fs", cbtDuration);
+		}
+
+		return durationStr;
+	}
 };

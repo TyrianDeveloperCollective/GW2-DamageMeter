@@ -11,4 +11,6 @@ namespace UiRoot
 	void Render();
 
 	void Options();
+
+	void OnCombatEnd();
 }

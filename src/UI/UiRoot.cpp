@@ -12,19 +12,44 @@
 #include "GW2RE/Game/Map/MapDef.h"
 #include "GW2RE/Game/MissionContext.h"
 #include "GW2RE/Game/PropContext.h"
-#include "Targets.h"
 #include "Util/src/Strings.h"
 
 namespace UiRoot
 {
-	static AddonAPI_t*  s_APIDefs            = nullptr;
-	
-	static Encounter_t  s_NullEncounter      = {};
-	static Encounter_t* s_DisplayedEncounter = &s_NullEncounter;
+	static AddonAPI_t*               s_APIDefs            = nullptr;
 
-	static bool         s_Incoming           = false;
+	static std::mutex                s_Mutex;
+	static Encounter_t               s_NullEncounter      = {}; // Dummy encounter
+	static Encounter_t*              s_DisplayedEncounter = &s_NullEncounter;
+	static std::vector<Encounter_t*> s_History            = {};
+
+	static bool                      s_Incoming           = false;
 
 	void OnCombatEvent();
+}
+
+/* Small helper to properly delete collection entries. */
+void DeleteEncounter(Encounter_t* aEncounter)
+{
+	for (auto [id, ag] : aEncounter->Agents)
+	{
+		delete ag;
+	}
+	aEncounter->Agents.clear();
+
+	for (auto [id, sk] : aEncounter->Skills)
+	{
+		delete sk;
+	}
+	aEncounter->Skills.clear();
+
+	for (auto ev : aEncounter->CombatEvents)
+	{
+		delete ev;
+	}
+	aEncounter->CombatEvents.clear();
+
+	delete aEncounter;
 }
 
 void UiRoot::Create(AddonAPI_t* aApi)
@@ -50,6 +75,13 @@ void UiRoot::Destroy()
 
 	s_APIDefs->GUI_Deregister(UiRoot::Render);
 	s_APIDefs->GUI_Deregister(UiRoot::Options);
+
+	const std::lock_guard<std::mutex> lock(s_Mutex);
+	for (Encounter_t* encounter : s_History)
+	{
+		DeleteEncounter(encounter);
+	}
+	s_History.clear();
 }
 
 void TooltipGeneric(const char* aFmt, ...)
@@ -95,21 +127,13 @@ void UiRoot::Render()
 		return;
 	}
 
+	const std::lock_guard<std::mutex> lock(s_Mutex);
 	if (ImGui::Begin(wndName.c_str(), 0, wndFlags))
 	{
-		uint64_t cbtDurationMs = s_DisplayedEncounter->TimeEnd - s_DisplayedEncounter->TimeStart;
-		float cbtDuration = max(cbtDurationMs, 1000) / 1000.f;
+		uint64_t cbtDurationMs = max(s_DisplayedEncounter->TimeEnd - s_DisplayedEncounter->TimeStart, 1000);
+		float cbtDuration = cbtDurationMs / 1000.f;
 
-		std::string durationStr;
-
-		if (cbtDurationMs > 60000)
-		{
-			durationStr = String::Format("%um%.2fs", cbtDurationMs / 1000 / 60, fmod(cbtDuration, 60.f));
-		}
-		else
-		{
-			durationStr = String::Format("%.2fs", cbtDuration);
-		}
+		std::string durationStr = s_DisplayedEncounter->Duration();
 
 		if (ImGui::BeginTable("Data", 3))
 		{
@@ -207,6 +231,28 @@ void UiRoot::Render()
 			s_Incoming = !s_Incoming;
 		}
 
+		if (ImGui::BeginMenu("History"))
+		{
+			if (s_History.size() > 0)
+			{
+				for (int32_t i = s_History.size() - 1; i >= 0; i--)
+				{
+					Encounter_t* encounter = s_History[i];
+
+					if (ImGui::Selectable(i == s_History.size() - 1 ? "Current" : encounter->GetName().c_str()))
+					{
+						s_DisplayedEncounter = encounter;
+					}
+				}
+			}
+			else
+			{
+				ImGui::Text("No history.");
+			}
+
+			ImGui::EndMenu();
+		}
+
 		ImGui::EndPopup();
 	}
 
@@ -220,7 +266,67 @@ void UiRoot::Options()
 	
 }
 
+void UiRoot::OnCombatEnd()
+{
+	const std::lock_guard<std::mutex> lock(s_Mutex);
+
+	/* Only keep last 10 encounters. */
+	while (s_History.size() > 10)
+	{
+		Encounter_t* delEncounter = s_History.front();
+
+		/* Selecting the oldest encounter means you can keep more than 10 encounters in history, but who cares. */
+		if (delEncounter != s_DisplayedEncounter)
+		{
+			DeleteEncounter(delEncounter);
+			s_History.erase(s_History.begin());
+		}
+	}
+
+	/* Reset displayed to null dummy. */
+	s_DisplayedEncounter = &s_NullEncounter;
+
+	if (!s_History.empty())
+	{
+		/* Assuming this is only executed after combat end. */
+		Encounter_t* mostrecent = s_History.back();
+
+		/* If less than 5 seconds duration, drop it. */
+		if ((mostrecent->TimeEnd - mostrecent->TimeStart) < 5000)
+		{
+			DeleteEncounter(mostrecent);
+			s_History.erase(s_History.end() - 1);
+		}
+
+		if (s_DisplayedEncounter == &s_NullEncounter && s_History.size() > 0)
+		{
+			s_DisplayedEncounter = s_History.back();
+		}
+	}
+}
+
 void UiRoot::OnCombatEvent()
 {
-	s_DisplayedEncounter = Combat::GetCurrentEncounter();
+	const std::lock_guard<std::mutex> lock(s_Mutex);
+
+	Encounter_t* current = Combat::GetCurrentEncounter();
+
+	if (current == nullptr) { return; }
+
+	if (s_History.size() > 0 && s_DisplayedEncounter == s_History.back())
+	{
+		s_DisplayedEncounter = &s_NullEncounter;
+	}
+
+	auto it = std::find(s_History.begin(), s_History.end(), current);
+
+	if (it == s_History.end())
+	{
+		s_History.push_back(current);
+	}
+
+	if (s_DisplayedEncounter == &s_NullEncounter)
+	{
+		s_DisplayedEncounter = current;
+	}
 }
