@@ -228,6 +228,7 @@ CALL Scripts\version.bat</Command>
     <ClInclude Include="src\GW2RE\Game\Text\TextApi.h" />
     <ClInclude Include="src\GW2RE\Game\Text\Types.h" />
     <ClInclude Include="src\GW2RE\Game\Types.h" />
+    <ClInclude Include="src\GW2RE\GW2RE.h" />
     <ClInclude Include="src\GW2RE\memtools\memtools.h" />
     <ClInclude Include="src\GW2RE\Util\FuncDefs.h" />
     <ClInclude Include="src\GW2RE\Util\Hook.h" />
