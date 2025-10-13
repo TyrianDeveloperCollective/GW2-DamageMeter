@@ -162,13 +162,16 @@ Agent_t* Combat::TrackAgent(GW2RE::Agent_t* aAgent)
 			else
 			{
 				GW2RE::CCharacter master = character.GetMaster();
-				if (master)
+
+				while (master)
 				{
 					/* Recursive track master agent. */
 					TrackAgent(master.GetAgent());
 
 					it->second->IsMinion = true;
 					it->second->OwnerID = master.GetAgentId();
+
+					master = master.GetMaster(); // Go up the foodchain
 				}
 			}
 
