@@ -6,12 +6,19 @@
 x64/
 x86/
 bld/
+build/
 [Bb]in/
 [Oo]bj/
 [Ll]og/
 
 # Visual Studio 2015/2017 cache/options directory
 .vs/
+
+# VSCode settings
+.vscode/
+
+# CMake local presets 
+CMakeUserPresets.json
 
 src/Branch.h
 src/CommitHash.h
