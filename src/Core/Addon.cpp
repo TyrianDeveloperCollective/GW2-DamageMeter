@@ -1,6 +1,6 @@
 #include "Addon.h"
 
-#include "imgui/imgui.h"
+#include "imgui.h"
 
 #include "Remote.h"
 #include "Version.h"

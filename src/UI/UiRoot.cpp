@@ -3,8 +3,8 @@
 #include <algorithm>
 #include <mutex>
 
-#include "imgui/imgui.h"
-#include "imgui/imgui_internal.h"
+#include "imgui.h"
+#include "imgui_internal.h"
 #include "ImPos/imgui_positioning.h"
 
 #include "Core/Combat/Combat.h"
