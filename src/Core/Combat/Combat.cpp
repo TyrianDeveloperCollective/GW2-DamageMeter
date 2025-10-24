@@ -1,6 +1,5 @@
 #include "Combat.h"
 
-#include <chrono>
 #include <cstdint>
 #include <ctime>
 #include <mutex>
@@ -27,7 +26,6 @@
 
 #include "CbtEncounter.h"
 #include "Core/Addon.h"
-#include "UI/UiRoot.h"
 #include "Util/src/Strings.h"
 #include "Util/src/Time.h"
 
@@ -287,6 +285,7 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	if (!s_ActiveEncounter)
 	{
 		s_APIDefs->Log(LOGL_DEBUG, ADDON_NAME, "Entered combat.");
+		s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT_START);
 
 		s_ActiveEncounter = new Encounter_t();
 		s_ActiveEncounter->TimeStart = s_BootTime + aCbtEv->SysTime;
@@ -459,8 +458,7 @@ void Combat::CombatEnd()
 	}
 
 	s_ActiveEncounter = nullptr;
-
-	UiRoot::OnCombatEnd();
+	s_APIDefs->Events_RaiseNotificationTargeted(ADDON_SIG, EV_CMX_COMBAT_END);
 }
 
 void __fastcall Combat::Advance(void*, void*)
