@@ -21,38 +21,31 @@
 #include "GW2RE/Game/Player/Player.h"
 #include "GW2RE/Game/PropContext.h"
 #include "GW2RE/Game/Text/TextApi.h"
-#include "GW2RE/Util/Hook.h"
+#include "Game/Combat/Tracker/CombatTracker.h"
+#include "Game/Game/EEngineEvent.h"
+#include "Game/VdfContext.h"
 #include "memtools/memtools.h"
 #include "Targets.h"
 
 #include "CbtEncounter.h"
+#include "CbtEventHandler.h"
 #include "Core/Addon.h"
 #include "UI/UiRoot.h"
 #include "Util/src/Strings.h"
-#include "Util/src/Time.h"
-
-FUNC_HOOKCREATE  HookCreate  = nullptr;
-FUNC_HOOKREMOVE  HookRemove  = nullptr;
-FUNC_HOOKENABLE  HookEnable  = nullptr;
-FUNC_HOOKDISABLE HookDisable = nullptr;
 
 namespace Combat
 {
 	static AddonAPI_t*                               s_APIDefs           = nullptr;
 	static uint64_t                                  s_BootTime          = {}; // boot time in ms
 
-	typedef uint64_t(__fastcall* FN_COMBATTRACKER)(GW2RE::CbtEvent_t*, uint32_t*);
-	static GW2RE::Hook<FN_COMBATTRACKER>*            s_HookCombatTracker = nullptr;
-
 	static GW2RE::CAgent                             s_SelfAgent         = nullptr;
 	static Encounter_t*                              s_ActiveEncounter   = nullptr;
+	static CombatEventHandler* 						 s_cbtEvtHandler     = nullptr;
 
 	/* Forward declare internal functions. */
 	Agent_t* TrackAgent(GW2RE::Agent_t* aAgent);
 	Skill_t* TrackSkill(GW2RE::SkillDef_t* aSkill);
-	uint64_t __fastcall OnCombatEvent(GW2RE::CbtEvent_t*, uint32_t*);
 	void CombatEnd();
-	void __fastcall Advance(void*, void*);
 
 	/* Text API */
 	typedef GW2RE::CodedText(__fastcall* FN_RESOLVEHASH)(GW2RE::TextHash, ...);
@@ -71,50 +64,39 @@ void Combat::Create(AddonAPI_t* aApi)
 	/* Get system time offset for combat events. */
 	s_BootTime = (std::time(nullptr) * 1000) - GetTickCount64();
 
-	/* Set auxillary functions for Hook struct. */
-	HookCreate = (FUNC_HOOKCREATE)s_APIDefs->MinHook_Create;
-	HookRemove = (FUNC_HOOKREMOVE)s_APIDefs->MinHook_Remove;
-	HookEnable = (FUNC_HOOKENABLE)s_APIDefs->MinHook_Enable;
-	HookDisable = (FUNC_HOOKDISABLE)s_APIDefs->MinHook_Disable;
-
 	s_ResolveHash = GW2RE::S_ResolveTextHash.Scan<FN_RESOLVEHASH>();
 	s_DecodeText = GW2RE::S_DecodeText.Scan<FN_DECODETEXT>();
 
-	FN_COMBATTRACKER cbttracker = GW2RE::S_FnCombatTracker.Scan<FN_COMBATTRACKER>();
-
-	if (!cbttracker)
-	{
-		cbttracker = GW2RE::S_FnCombatTracker_Callsite.Scan<FN_COMBATTRACKER>();
-
-		if (!cbttracker)
-		{
-			s_APIDefs->Log(LOGL_CRITICAL, ADDON_NAME, "Combat tracker not registered.");
-			return;
-		}
-		else
-		{
-			s_APIDefs->Log(LOGL_INFO, ADDON_NAME, "Combat tracker registered through secondary entry point.");
-		}
-	}
-
-	GW2RE::CEventApi::Register(GW2RE::EEngineEvent::EngineTick, Advance);
-
-	s_HookCombatTracker = new GW2RE::Hook<FN_COMBATTRACKER>(cbttracker, OnCombatEvent);
-	s_HookCombatTracker->Enable();
+	s_cbtEvtHandler = new CombatEventHandler();
+	GW2RE::CEventApi::Get().Register(GW2RE::EEngineEvent::GlobalShutdown, Combat::Destroy);
 }
 
-void Combat::Destroy()
+void Combat::Destroy(void*, void*)
 {
+	static std::mutex Mutex;
+	const std::lock_guard lock(Mutex);
 	if (!s_APIDefs) { return; }
+	GW2RE::CEventApi::Get().Deregister(GW2RE::EEngineEvent::GlobalShutdown, Combat::Destroy);
+	delete s_cbtEvtHandler;
+	s_APIDefs = nullptr;
+}
 
-	GW2RE::CEventApi::Deregister(GW2RE::EEngineEvent::EngineTick, Advance);
+CombatEventHandler::CombatEventHandler()
+{
+	auto ctx = GW2RE::CVdfContext::Get();
+	ctx.AttachHandler(this);
+	OnGameViewChanged(nullptr, ctx.GetGameView());
+}
 
-	if (s_HookCombatTracker) { GW2RE::DestroyHook(s_HookCombatTracker); }
+CombatEventHandler::~CombatEventHandler()
+{
+	OnCombatTrackerNotifierCleanup();
+	GW2RE::CVdfContext::Get().DetachHandler(this);
 }
 
 bool Combat::IsRegistered()
 {
-	return s_HookCombatTracker != nullptr;
+	return s_cbtEvtHandler != nullptr;
 }
 
 bool Combat::IsActive()
@@ -235,10 +217,8 @@ Skill_t* Combat::TrackSkill(GW2RE::SkillDef_t* aSkill)
 	return it->second;
 }
 
-uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint32_t* a2)
+void CombatEventHandler::OnCombatEventCreated(GW2RE::CbtEvent_t* aCombatEvent)
 {
-	const std::lock_guard<std::mutex> lock(s_HookCombatTracker->Mutex);
-
 	GW2RE::CCbtEv aCbtEv = aCombatEvent;
 
 	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
@@ -247,13 +227,13 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 	/* If no active map, or active map is PvP, do not process. */
 	if (!missionctx || (missionctx->CurrentMap && missionctx->CurrentMap->PvP))
 	{
-		return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
+		return;
 	}
 
 	/* Filter display events. */
 	if (!aCbtEv || aCbtEv.IsDisplayedBuffDamage())
 	{
-		return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
+		return;
 	}
 
 	/* Filter out unwanted events. */
@@ -279,10 +259,11 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 		default:
 		{
 			/* Do not process other events. */
-			return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
+			return;
 		}
 	}
 
+	using namespace Combat;
 	/* If no active encounter -> Combat entry. */
 	if (!s_ActiveEncounter)
 	{
@@ -442,8 +423,25 @@ uint64_t __fastcall Combat::OnCombatEvent(GW2RE::CbtEvent_t* aCombatEvent, uint3
 			ev->ValueAlt
 		).c_str()
 	);
+}
 
-	return s_HookCombatTracker->OriginalFunction(aCombatEvent, a2);
+void CombatEventHandler::OnCombatTrackerNotifierCleanup()
+{
+	if(IsAttached)
+	{
+		GW2RE::CCombatTracker::Get().DetachHandler(this);
+		IsAttached = false;
+	}
+}
+
+void CombatEventHandler::OnGameViewChanged(GW2RE::UNKNOWN, GW2RE::EGameView aView)
+{
+	if(aView != GW2RE::EGameView::Gameplay || IsAttached)
+	{
+		return;
+	}
+	GW2RE::CCombatTracker::Get().AttachHandler(this);
+	IsAttached = true;
 }
 
 void Combat::CombatEnd()
@@ -463,7 +461,7 @@ void Combat::CombatEnd()
 	UiRoot::OnCombatEnd();
 }
 
-void __fastcall Combat::Advance(void*, void*)
+void CombatEventHandler::OnVdfAdvanced()
 {
 	GW2RE::CPropContext      propctx    = GW2RE::CPropContext::Get();
 	GW2RE::CCharCliContext   cctx       = propctx.GetCharCliCtx();
@@ -475,13 +473,13 @@ void __fastcall Combat::Advance(void*, void*)
 	if (missionctx->CurrentMapID != s_LastMapID)
 	{
 		s_LastMapID = missionctx->CurrentMapID;
-		CombatEnd();
+		Combat::CombatEnd();
 	}
 	else if (!character)
 	{
-		CombatEnd();
+		Combat::CombatEnd();
 	}
-	else if (s_ActiveEncounter)
+	else if (Combat::s_ActiveEncounter)
 	{
 		bool isInCombat = (character->Flags & GW2RE::ECharacterFlags::IsInCombat) == GW2RE::ECharacterFlags::IsInCombat;
 
@@ -495,7 +493,7 @@ void __fastcall Combat::Advance(void*, void*)
 			//	/* If last combat event is longer than 15s ago. End combat. */
 			//	if (delta >= 15) { CombatEnd(); }
 			//}
-			CombatEnd();
+			Combat::CombatEnd();
 		}
 	}
 }
