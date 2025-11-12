@@ -57,7 +57,7 @@ struct Encounter_t
 		tm tm{};
 		localtime_s(&tm, &time);
 
-		return String::Format("%02d:%02d:%02d, %s (%s)", tm.tm_hour, tm.tm_min, tm.tm_sec, this->Duration(), targetName.c_str());
+		return String::Format("%02d:%02d:%02d, %s (%s)", tm.tm_hour, tm.tm_min, tm.tm_sec, this->Duration().c_str(), targetName.c_str());
 	}
 
 	inline std::string Duration()
