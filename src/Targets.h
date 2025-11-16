@@ -120,6 +120,8 @@ static std::vector<uint32_t> s_SecondaryTargets = {
 	22315, // kodan brothers - merged
 	22481, // kodan brothers - claw
 	22436, // fraenir - construct
+	24431, // mai trin - scarlet phantom
+	25262, // mai trin - scarlet phantom cm
 	24768, // mai trin - scarlet
 	25247, // mai trin - scarlet cm
 	23612, // minister li - sniper
