@@ -17,6 +17,7 @@
 namespace UiRoot
 {
 	static AddonAPI_t*               s_APIDefs            = nullptr;
+	static NexusLinkData_t*          s_NexusLink          = nullptr;
 
 	static std::mutex                s_Mutex;
 	static Encounter_t               s_NullEncounter      = {}; // Dummy encounter
@@ -64,6 +65,8 @@ void UiRoot::Create(AddonAPI_t* aApi)
 	s_APIDefs->GUI_Register(RT_Render, UiRoot::Render);
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
 
+	s_NexusLink = static_cast<NexusLinkData_t*>(s_APIDefs->DataLink_Get(DL_NEXUS_LINK));
+
 	s_APIDefs->Events_Subscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
 }
 
@@ -101,6 +104,11 @@ void TooltipGeneric(const char* aFmt, ...)
 
 void UiRoot::Render()
 {
+	if (!s_NexusLink || !s_NexusLink->IsGameplay)
+	{
+		return;
+	}
+
 	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
 	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
 
@@ -116,6 +124,11 @@ void UiRoot::Render()
 		ImGui::Begin(wndName.c_str(), 0, wndFlags);
 		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledInPvP));
 		ImGui::End();
+		return;
+	}
+
+	if (!missionctx || !missionctx->CurrentMap)
+	{
 		return;
 	}
 
