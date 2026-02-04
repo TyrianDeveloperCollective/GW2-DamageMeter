@@ -1,7 +1,5 @@
 #pragma once
 
-#include <vector>
-
 #include "Nexus/Nexus.h"
 #include "CbtEncounter.h"
 
@@ -11,7 +9,7 @@ namespace Combat
 {
 	void Create(AddonAPI_t* aApi);
 
-	void Destroy();
+	void Destroy(void* = nullptr, void* = nullptr);
 
 	bool IsRegistered();
 
@@ -19,4 +17,3 @@ namespace Combat
 
 	Encounter_t* GetCurrentEncounter();
 }
- 
