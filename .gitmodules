@@ -4,9 +4,6 @@
 [submodule "src/thirdparty/imgui"]
 	path = src/thirdparty/imgui
 	url = https://github.com/RaidcoreGG/imgui
-[submodule "src/GW2RE"]
-	path = src/GW2RE
-	url = git@github.com:TyrianDeveloperCollective/GW2RE-lib.git
 [submodule "src/thirdparty/Nexus"]
 	path = src/thirdparty/Nexus
 	url = https://github.com/RaidcoreGG/RCGG-lib-nexus-api
