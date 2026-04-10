@@ -1,62 +1,62 @@
 #include "UiRoot.h"
 
 #include <algorithm>
+#include <cstring>
 #include <mutex>
 
+#include "Nexus/Nexus.h"
+#include "Targets.h"
 #include "imgui/imgui.h"
 #include "imgui/imgui_internal.h"
 #include "ImPos/imgui_positioning.h"
+#include <Core/Combat/CbtEncounter.h>
+#include <string>
+#include <array>
+#include "RealTime-API/RTAPI.hpp"
 
-#include "Core/Combat/Combat.h"
 #include "Core/Localization.h"
-#include "GW2RE/Game/Map/MapDef.h"
-#include "GW2RE/Game/MissionContext.h"
-#include "GW2RE/Game/PropContext.h"
 #include "Util/src/Strings.h"
 
+using Encounters = std::array<Encounter_t, 10>;
 namespace UiRoot
 {
-	static AddonAPI_t*               s_APIDefs            = nullptr;
-	static NexusLinkData_t*          s_NexusLink          = nullptr;
+	static AddonAPI_t*                s_APIDefs            = nullptr;
+	static NexusLinkData_t*           s_NexusLink          = nullptr;
+	static RTAPI::RealTimeData*       s_RealTimeData       = nullptr;
 
-	static std::mutex                s_Mutex;
-	static Encounter_t               s_NullEncounter      = {}; // Dummy encounter
-	static Encounter_t*              s_DisplayedEncounter = &s_NullEncounter;
-	static std::vector<Encounter_t*> s_History            = {};
+	static std::mutex                 s_Mutex;
+	static Encounters::const_iterator s_DisplayedEncounter = {};
+	static Encounters::iterator       s_ActiveEncounter    = {};
+	static Encounters                 s_History            = {};
 
-	static bool                      s_Incoming           = false;
+	static bool                       s_Incoming           = false;
 
-	void OnCombatEvent();
+	void OnCombatEvent(const RTAPI::CombatEvent*);
 }
 
-/* Small helper to properly delete collection entries. */
-void DeleteEncounter(Encounter_t* aEncounter)
+void UiRoot::OnAddonLoaded(int* aSignature)
 {
-	for (auto [id, ag] : aEncounter->Agents)
-	{
-		delete ag;
-	}
-	aEncounter->Agents.clear();
+  if (!aSignature) { return; }
+  
+  if (*aSignature == RTAPI_SIG)
+  {
+    s_RealTimeData = static_cast<RTAPI::RealTimeData *>(s_APIDefs->DataLink_Get(DL_RTAPI));
+  }
+}
 
-	for (auto [id, sk] : aEncounter->Skills)
-	{
-		delete sk;
-	}
-	aEncounter->Skills.clear();
+void UiRoot::OnAddonUnloaded(int* aSignature)
+{
+  if (!aSignature) { return; }
 
-	for (auto ev : aEncounter->CombatEvents)
-	{
-		delete ev;
-	}
-	aEncounter->CombatEvents.clear();
-
-	delete aEncounter;
+  if (*aSignature == RTAPI_SIG)
+  {
+    s_RealTimeData = nullptr;
+  }
 }
 
 void UiRoot::Create(AddonAPI_t* aApi)
 {
 	s_APIDefs = aApi;
-
 	ImGui::SetCurrentContext((ImGuiContext*)s_APIDefs->ImguiContext);
 	ImGui::SetAllocatorFunctions((void* (*)(size_t, void*))s_APIDefs->ImguiMalloc, (void(*)(void*, void*))s_APIDefs->ImguiFree);
 
@@ -64,27 +64,35 @@ void UiRoot::Create(AddonAPI_t* aApi)
 
 	s_APIDefs->GUI_Register(RT_Render, UiRoot::Render);
 	s_APIDefs->GUI_Register(RT_OptionsRender, UiRoot::Options);
-
+	
 	s_NexusLink = static_cast<NexusLinkData_t*>(s_APIDefs->DataLink_Get(DL_NEXUS_LINK));
+	
+	for(auto &encounter : s_History)
+	{
+		encounter = Encounter_t{};
+	}
+	s_DisplayedEncounter = s_History.begin();
+	s_ActiveEncounter = s_History.begin();
 
-	s_APIDefs->Events_Subscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
+    
+	s_APIDefs->Events_Subscribe(EV_ADDON_LOADED, (EVENT_CONSUME)OnAddonLoaded);
+	s_APIDefs->Events_Subscribe(EV_ADDON_UNLOADED, (EVENT_CONSUME)OnAddonUnloaded);
+	s_APIDefs->Events_Subscribe(EV_RTAPI_COMBAT_EVENT, (EVENT_CONSUME)OnCombatEvent);
 }
 
 void UiRoot::Destroy()
 {
 	if (!s_APIDefs) { return; }
 
-	s_APIDefs->Events_Unsubscribe(EV_CMX_COMBAT, (EVENT_CONSUME)OnCombatEvent);
-
+	s_APIDefs->Events_Unsubscribe(EV_RTAPI_COMBAT_EVENT, (EVENT_CONSUME)OnCombatEvent);
+	s_APIDefs->Events_Unsubscribe(EV_ADDON_LOADED, (EVENT_CONSUME)OnAddonLoaded);
+	s_APIDefs->Events_Unsubscribe(EV_ADDON_UNLOADED, (EVENT_CONSUME)OnAddonUnloaded);
+	
 	s_APIDefs->GUI_Deregister(UiRoot::Render);
 	s_APIDefs->GUI_Deregister(UiRoot::Options);
 
+	/* Make sure all pending callbacks are done */
 	const std::lock_guard<std::mutex> lock(s_Mutex);
-	for (Encounter_t* encounter : s_History)
-	{
-		DeleteEncounter(encounter);
-	}
-	s_History.clear();
 }
 
 void TooltipGeneric(const char* aFmt, ...)
@@ -108,34 +116,26 @@ void UiRoot::Render()
 	{
 		return;
 	}
-
-	GW2RE::CPropContext propctx = GW2RE::CPropContext::Get();
-	GW2RE::MissionContext_t* missionctx = propctx.GetMissionCtx();
-
-	std::string wndName = Translate(ETexts::CombatMetrics);
+    std::string wndName = Translate(ETexts::CombatMetrics);
 	wndName.append("###CMX::Metrics");
 
 	static ImGuiExt::Positioning_t s_Position{};
 
 	ImGuiWindowFlags wndFlags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoCollapse | ImGuiExt::UpdatePosition("###CMX::Metrics");
 
-	if (missionctx && missionctx->CurrentMap && missionctx->CurrentMap->PvP)
+
+	if (!s_RealTimeData)
 	{
 		ImGui::Begin(wndName.c_str(), 0, wndFlags);
-		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledInPvP));
+		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledCombatTracker));
 		ImGui::End();
 		return;
 	}
 
-	if (!missionctx || !missionctx->CurrentMap)
-	{
-		return;
-	}
-
-	if (!Combat::IsRegistered())
+	if (s_RealTimeData->MapType == RTAPI::EMapType::PvP)
 	{
 		ImGui::Begin(wndName.c_str(), 0, wndFlags);
-		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledCombatTracker));
+		ImGui::TextColored(ImVec4(0.675f, 0.349f, 0.349f, 1.0f), Translate(ETexts::DisabledInPvP));
 		ImGui::End();
 		return;
 	}
@@ -161,14 +161,14 @@ void UiRoot::Render()
 			ImGui::TableNextColumn();
 			ImGui::TextDisabled(Translate(ETexts::Damage));
 
-			float* damageCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Damage : &s_DisplayedEncounter->OutCleave.Damage;
-			float* damageTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Damage : &s_DisplayedEncounter->OutTarget.Damage;
+			const float* damageCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Damage : &s_DisplayedEncounter->OutCleave.Damage;
+			const float* damageTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Damage : &s_DisplayedEncounter->OutTarget.Damage;
 
-			float* healCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Heal : &s_DisplayedEncounter->OutCleave.Heal;
-			float* healTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Heal : &s_DisplayedEncounter->OutTarget.Heal;
+			const float* healCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Heal : &s_DisplayedEncounter->OutCleave.Heal;
+			const float* healTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Heal : &s_DisplayedEncounter->OutTarget.Heal;
 
-			float* barrierCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Barrier : &s_DisplayedEncounter->OutCleave.Barrier;
-			float* barrierTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Barrier : &s_DisplayedEncounter->OutTarget.Barrier;
+			const float* barrierCleave = s_Incoming ? &s_DisplayedEncounter->InCleave.Barrier : &s_DisplayedEncounter->OutCleave.Barrier;
+			const float* barrierTarget = s_Incoming ? &s_DisplayedEncounter->InTarget.Barrier : &s_DisplayedEncounter->OutTarget.Barrier;
 
 			/* DPS Target */
 			ImGui::TableNextColumn();
@@ -246,19 +246,21 @@ void UiRoot::Render()
 
 		if (ImGui::BeginMenu("History"))
 		{
-			if (s_History.size() > 0)
+			bool hasHistory = false;
+			for (auto encounter = s_History.begin(); encounter != s_History.end(); ++encounter)
 			{
-				for (int32_t i = s_History.size() - 1; i >= 0; i--)
+				if(!encounter->HasStarted())
 				{
-					Encounter_t* encounter = s_History[i];
-
-					if (ImGui::Selectable(i == s_History.size() - 1 ? "Current" : encounter->GetName().c_str()))
-					{
-						s_DisplayedEncounter = encounter;
-					}
+					continue;
 				}
+				const std::string name = encounter == s_ActiveEncounter ? "Current" : encounter->GetName();
+				if (ImGui::Selectable(name.c_str()))
+				{
+					s_DisplayedEncounter = encounter;
+				}
+				hasHistory = true;
 			}
-			else
+			if(!hasHistory)
 			{
 				ImGui::Text("No history.");
 			}
@@ -272,74 +274,161 @@ void UiRoot::Render()
 	ImGuiExt::ContextMenuPosition("###CMX::Metrics::CtxMenu");
 
 	ImGui::End();
+	
+	auto inCombat = static_cast<uint32_t>(s_RealTimeData->CharacterState) & static_cast<uint32_t>(RTAPI::ECharacterState::IsInCombat);
+	if(!inCombat && s_ActiveEncounter->HasStarted())
+	{
+		UiRoot::OnCombatEnd();
+	}
 }
 
 void UiRoot::Options()
 {
-	
+}
+
+void UiRoot::OnCombatStart()
+{
+	auto lastEncounter = (s_ActiveEncounter == s_History.begin() ? s_History.end() : s_ActiveEncounter) - 1;
+	if(s_DisplayedEncounter == lastEncounter)
+	{
+		s_DisplayedEncounter = s_ActiveEncounter;
+	}
 }
 
 void UiRoot::OnCombatEnd()
 {
-	const std::lock_guard<std::mutex> lock(s_Mutex);
-
-	/* Only keep last 10 encounters. */
-	while (s_History.size() > 10)
+	if ((s_ActiveEncounter->TimeEnd - s_ActiveEncounter->TimeStart) >= 5000)
 	{
-		Encounter_t* delEncounter = s_History.front();
-
-		/* Selecting the oldest encounter means you can keep more than 10 encounters in history, but who cares. */
-		if (delEncounter != s_DisplayedEncounter)
+		++s_ActiveEncounter;
+		if(s_ActiveEncounter == s_History.end())
 		{
-			DeleteEncounter(delEncounter);
-			s_History.erase(s_History.begin());
+			s_ActiveEncounter = s_History.begin();
 		}
 	}
-
-	/* Reset displayed to null dummy. */
-	s_DisplayedEncounter = &s_NullEncounter;
-
-	if (!s_History.empty())
-	{
-		/* Assuming this is only executed after combat end. */
-		Encounter_t* mostrecent = s_History.back();
-
-		/* If less than 5 seconds duration, drop it. */
-		if ((mostrecent->TimeEnd - mostrecent->TimeStart) < 5000)
-		{
-			DeleteEncounter(mostrecent);
-			s_History.erase(s_History.end() - 1);
-		}
-
-		if (s_DisplayedEncounter == &s_NullEncounter && s_History.size() > 0)
-		{
-			s_DisplayedEncounter = s_History.back();
-		}
-	}
+    *s_ActiveEncounter = Encounter_t{};
 }
 
-void UiRoot::OnCombatEvent()
+void UiRoot::OnCombatEvent(const RTAPI::CombatEvent* ev)
 {
 	const std::lock_guard<std::mutex> lock(s_Mutex);
 
-	Encounter_t* current = Combat::GetCurrentEncounter();
-
-	if (current == nullptr) { return; }
-
-	if (s_History.size() > 0 && s_DisplayedEncounter == s_History.back())
+	if (!s_ActiveEncounter->HasStarted())
 	{
-		s_DisplayedEncounter = &s_NullEncounter;
+		UiRoot::OnCombatStart();
+		s_ActiveEncounter->TimeStart = ev->Time;
 	}
 
-	auto it = std::find(s_History.begin(), s_History.end(), current);
+	s_ActiveEncounter->TimeEnd = ev->Time;
 
-	if (it == s_History.end())
+	/* Check for trigger name. */
+	if (!s_ActiveEncounter->TriggerName[0])
 	{
-		s_History.push_back(current);
+		if (ev->SrcAgent && ev->SrcAgent->ID)
+		{
+			if (std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->SrcAgent->ID) != s_PrimaryTargets.end())
+			{
+				std::memcpy(s_ActiveEncounter->TriggerName, ev->SrcAgent->Name, sizeof(s_ActiveEncounter->TriggerName));
+			}
+		}
+		else if (ev->DstAgent && ev->DstAgent->ID)
+		{
+			if (std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->DstAgent->ID) != s_PrimaryTargets.end())
+			{
+				std::memcpy(s_ActiveEncounter->TriggerName, ev->DstAgent->Name, sizeof(s_ActiveEncounter->TriggerName));
+			}
+		}
 	}
 
-	if (s_DisplayedEncounter == &s_NullEncounter)
+	/* Check for self ID. */
+	if(!s_ActiveEncounter->SelfID)
 	{
-		s_DisplayedEncounter = current;
+		if(ev->SrcAgent->IsSelf)
+		{
+			s_ActiveEncounter->SelfID = ev->SrcAgent->ID;
+		}
+		else if(ev->DstAgent->IsSelf)
+		{
+			s_ActiveEncounter->SelfID = ev->DstAgent->ID;
+		}
+	}
+
+	/* Process stats. */
+	{
+		/*              hasSrc       &&  src is self          || src is owned minion */
+		bool outgoing = ev->SrcAgent && (ev->SrcAgent->IsSelf || (ev->SrcAgent->IsMinion && ev->SrcAgent->OwnerID == s_ActiveEncounter->SelfID));
+		bool incoming = ev->DstAgent && ev->DstAgent->IsSelf;
+
+		if (outgoing && ev->DstAgent)
+		{
+			bool isTarget = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->DstAgent->SpeciesID) != s_PrimaryTargets.end()
+				|| std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), ev->DstAgent->SpeciesID) != s_SecondaryTargets.end();
+
+			if (ev->Value < 0)
+			{
+				/* Damage */
+				s_ActiveEncounter->OutCleave.Damage += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->OutTarget.Damage += ev->Value;
+				}
+			}
+			else if (ev->Value > 0)
+			{
+				/* Heal */
+				s_ActiveEncounter->OutCleave.Heal += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->OutTarget.Heal += ev->Value;
+				}
+			}
+			else if (ev->ValueAlt > 0)
+			{
+				/* Barrier */
+				s_ActiveEncounter->OutCleave.Barrier += ev->ValueAlt;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->OutTarget.Barrier += ev->ValueAlt;
+				}
+			}
+		}
+		else if (incoming && ev->SrcAgent)
+		{
+			bool isTarget = std::find(s_PrimaryTargets.begin(), s_PrimaryTargets.end(), ev->SrcAgent->SpeciesID) != s_PrimaryTargets.end()
+				|| std::find(s_SecondaryTargets.begin(), s_SecondaryTargets.end(), ev->SrcAgent->SpeciesID) != s_SecondaryTargets.end();
+
+			if (ev->Value < 0)
+			{
+				/* Damage */
+				s_ActiveEncounter->InCleave.Damage += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->InTarget.Damage += ev->Value;
+				}
+			}
+			else if (ev->Value > 0)
+			{
+				/* Heal */
+				s_ActiveEncounter->InCleave.Heal += ev->Value;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->InTarget.Heal += ev->Value;
+				}
+			}
+			else if (ev->ValueAlt > 0)
+			{
+				/* Barrier */
+				s_ActiveEncounter->InCleave.Barrier += ev->ValueAlt;
+
+				if (isTarget)
+				{
+					s_ActiveEncounter->InTarget.Barrier += ev->ValueAlt;
+				}
+			}
+		}
 	}
 }

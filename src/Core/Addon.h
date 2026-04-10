@@ -6,10 +6,3 @@
 #define ADDON_NAME "Personal Combat Metrics"
 
 extern "C" __declspec(dllexport) AddonDefinition_t* GetAddonDef();
-
-namespace Addon
-{
-	void Load(AddonAPI_t* aApi);
-
-	void Unload();
-}

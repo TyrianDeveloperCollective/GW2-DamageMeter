@@ -4,9 +4,6 @@
 [submodule "src/thirdparty/imgui"]
 	path = src/thirdparty/imgui
 	url = https://github.com/RaidcoreGG/imgui
-[submodule "src/GW2RE"]
-	path = src/GW2RE
-	url = https://github.com/TyrianDeveloperCollective/GW2RE-lib
 [submodule "src/thirdparty/Nexus"]
 	path = src/thirdparty/Nexus
 	url = https://github.com/RaidcoreGG/RCGG-lib-nexus-api
@@ -16,3 +13,6 @@
 [submodule "src/thirdparty/ImPos"]
 	path = src/thirdparty/ImPos
 	url = https://github.com/RaidcoreGG/imgui_positioning
+[submodule "src/thirdparty/RealTime-API"]
+	path = src/thirdparty/RealTime-API
+	url = https://github.com/TyrianDeveloperCollective/GW2-RealTime-API-Releases.git
