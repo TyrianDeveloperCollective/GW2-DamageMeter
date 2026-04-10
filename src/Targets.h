@@ -1,8 +1,8 @@
 ﻿#pragma once
-#include <vector>
+#include <array>
 #include <cstdint>
 
-static std::vector<uint32_t> s_PrimaryTargets = {
+static std::array<uint32_t, 63> s_PrimaryTargets = {
 /* raids */
 	15438, // vale guardian
 	15429, // gorseval
@@ -77,7 +77,7 @@ static std::vector<uint32_t> s_PrimaryTargets = {
 	19676,
 };
 
-static std::vector<uint32_t> s_SecondaryTargets = {
+static std::array<uint32_t, 47> s_SecondaryTargets = {
 /* raids */
 	// 15420, // vale guardian - green guardian
 	// 15431, // vale guardian - blue guardian

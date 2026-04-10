@@ -8,9 +8,14 @@ namespace UiRoot
 
 	void Destroy();
 
+	void OnAddonLoaded(int*);
+
+	void OnAddonUnloaded(int*);
+
 	void Render();
 
 	void Options();
 
 	void OnCombatEnd();
+	void OnCombatStart();
 }
